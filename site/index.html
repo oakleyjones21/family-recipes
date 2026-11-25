@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Our Family Table</title>
+<meta name="description" content="Our family's recipes, searchable by what's in the fridge.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header wrap">
+  <a class="logo" href="#/">our <i>family</i> table</a>
+  <nav class="pill-nav" aria-label="Main">
+    <a href="#/" data-nav="home">Recipes</a>
+    <a href="#/favorites" data-nav="favorites">Favorites</a>
+    <a href="#/weeknight" data-nav="weeknight">Weeknight</a>
+    <a href="#/all" data-nav="all">All recipes</a>
+  </nav>
+</header>
+<main id="main" tabindex="-1"></main>
+<footer class="site-footer wrap">
+  <span>Made with love in our kitchen.</span>
+  <span id="updated"></span>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

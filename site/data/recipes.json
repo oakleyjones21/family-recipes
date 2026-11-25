@@ -1,0 +1,132 @@
+{
+  "updated": "2026-11-25T22:50:00.000Z",
+  "recipes": [
+    {
+      "id": "sample-apple-crisp",
+      "name": "Apple Crisp",
+      "mealType": "Dessert",
+      "cuisine": "American",
+      "occasion": ["Sunday Dinner", "Kid Can Make", "Holiday"],
+      "totalTime": "1–2 hr",
+      "prep": 20,
+      "cook": 45,
+      "servings": 8,
+      "keyIngredients": ["apple"],
+      "method": ["Oven"],
+      "status": "Tested",
+      "rating": 0,
+      "source": "Sample recipe, replaced on first sync",
+      "sourceLink": null,
+      "slug": "apple-crisp",
+      "photo": null,
+      "ingredientGroups": [
+        { "label": "Filling", "items": ["8 medium apples, peeled and sliced", "½ cup sugar", "1 tbsp lemon juice", "1 tsp cinnamon"] },
+        { "label": "Topping", "items": ["1 cup old-fashioned oats", "¾ cup all-purpose flour", "¾ cup brown sugar", "½ cup cold butter, cubed"] }
+      ],
+      "steps": [
+        "Heat the oven to 350°F and butter a 9×13-inch baking dish.",
+        "Toss the apples with the sugar, lemon juice and cinnamon. Spread them in the dish.",
+        "Rub the oats, flour, brown sugar and butter together until clumpy. Scatter over the apples.",
+        "Bake until bubbling and golden, about 45 minutes. Cool 10 minutes before serving."
+      ],
+      "notes": ["Serve warm with vanilla ice cream."]
+    },
+    {
+      "id": "42389a97-4512-81a6-b52d-c1adda387892",
+      "name": "Chicken Piccata",
+      "mealType": "Dinner",
+      "cuisine": "Italian",
+      "occasion": ["Weeknight", "Company"],
+      "totalTime": "30–60 min",
+      "prep": 15,
+      "cook": 25,
+      "servings": 6,
+      "keyIngredients": ["chicken", "lemon", "capers", "pasta"],
+      "method": ["Stovetop"],
+      "status": "Family Favorite",
+      "rating": 5,
+      "source": "Sample card (model for the format)",
+      "sourceLink": null,
+      "slug": "chicken-piccata",
+      "photo": null,
+      "ingredientGroups": [
+        { "label": "Chicken", "items": ["3 large boneless, skinless chicken breasts (about 2¼ lb)", "1 tsp kosher salt", "½ tsp black pepper", "½ cup all-purpose flour", "3 tbsp olive oil"] },
+        { "label": "Sauce", "items": ["4 tbsp butter, divided", "3 garlic cloves, minced", "1½ cups chicken broth", "⅓ cup fresh lemon juice (about 2 lemons)", "3 tbsp capers, drained", "2 tbsp chopped fresh parsley"] },
+        { "label": "To serve", "items": ["1 lb angel hair or spaghetti"] }
+      ],
+      "steps": [
+        "Start the pasta water. Cook the pasta while the chicken cooks, and reserve ½ cup of the pasta water before draining.",
+        "Slice each breast in half horizontally into 6 cutlets. Pound them to an even ¼-inch thickness.",
+        "Season the cutlets with the salt and pepper, then dredge them in flour and shake off the excess.",
+        "Heat 1½ tbsp oil and 1 tbsp butter in a 12-inch skillet over medium-high heat. Cook 3 cutlets until golden, 3–4 min per side. Move them to a plate. Repeat with the remaining oil, another 1 tbsp butter and the other 3 cutlets.",
+        "Lower the heat to medium. Add the garlic and cook 30 seconds.",
+        "Add the broth, lemon juice and capers, scraping up the browned bits. Simmer until reduced by about a third, 5–6 min.",
+        "Turn off the heat and swirl in the last 2 tbsp butter. Return the chicken and spoon the sauce over it. Sprinkle with parsley.",
+        "Toss the pasta with a few spoonfuls of the sauce, loosening it with pasta water as needed. Serve the chicken on top."
+      ],
+      "notes": [
+        "Feeding 7+: use 4 breasts (8 cutlets) and 1½ times the sauce. Cook the chicken in 3 batches.",
+        "Kids: halve the capers, or leave them on the side.",
+        "Swap: chicken thighs work. Cook them 5–6 min per side.",
+        "Make-ahead: pound and flour the cutlets up to 4 hours ahead. Refrigerate them on a sheet pan."
+      ]
+    },
+    {
+      "id": "sample-lemon-ricotta-pancakes",
+      "name": "Lemon Ricotta Pancakes",
+      "mealType": "Breakfast",
+      "cuisine": "American",
+      "occasion": ["Weeknight", "Kid Can Make", "Birthday"],
+      "totalTime": "Under 30 min",
+      "prep": 10,
+      "cook": 15,
+      "servings": 6,
+      "keyIngredients": ["ricotta", "lemon", "egg"],
+      "method": ["Stovetop"],
+      "status": "Tested",
+      "rating": 0,
+      "source": "Sample recipe, replaced on first sync",
+      "sourceLink": null,
+      "slug": "lemon-ricotta-pancakes",
+      "photo": null,
+      "ingredientGroups": [
+        { "label": null, "items": ["2 cups all-purpose flour", "2 tbsp sugar", "2 tsp baking powder", "½ tsp salt", "1½ cups ricotta", "1½ cups milk", "3 eggs", "Zest and juice of 1 lemon", "Butter, for the griddle"] }
+      ],
+      "steps": [
+        "Whisk the flour, sugar, baking powder and salt in a large bowl.",
+        "In another bowl, whisk the ricotta, milk, eggs, lemon zest and juice until smooth.",
+        "Fold the wet ingredients into the dry until just combined. A few lumps are fine.",
+        "Cook ⅓-cup scoops on a buttered griddle over medium heat, about 2 min per side."
+      ],
+      "notes": []
+    },
+    {
+      "id": "sample-slow-cooker-pot-roast",
+      "name": "Slow Cooker Pot Roast",
+      "mealType": "Dinner",
+      "cuisine": "Comfort",
+      "occasion": ["Sunday Dinner", "Make-Ahead"],
+      "totalTime": "Over 2 hr",
+      "prep": 20,
+      "cook": 480,
+      "servings": 7,
+      "keyIngredients": ["beef roast", "potato", "carrot"],
+      "method": ["Slow Cooker"],
+      "status": "Tested",
+      "rating": 0,
+      "source": "Sample recipe, replaced on first sync",
+      "sourceLink": null,
+      "slug": "slow-cooker-pot-roast",
+      "photo": null,
+      "ingredientGroups": [
+        { "label": null, "items": ["3–4 lb chuck roast", "2 tsp kosher salt", "1 tsp black pepper", "2 lb small potatoes", "1 lb carrots, cut in 2-inch pieces", "1 onion, cut in wedges", "1 cup beef broth", "2 tbsp Worcestershire sauce"] }
+      ],
+      "steps": [
+        "Season the roast all over with the salt and pepper. Brown it on all sides in a hot skillet, if you have time.",
+        "Put the potatoes, carrots and onion in the slow cooker. Set the roast on top.",
+        "Pour in the broth and Worcestershire. Cook on low 8 hours, until the beef pulls apart."
+      ],
+      "notes": ["Thicken the juices with a cornstarch slurry for gravy."]
+    }
+  ]
+}
