@@ -35,6 +35,19 @@ button { cursor: pointer; }
 /* Header */
 .site-header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; padding-top: 24px; padding-bottom: 24px; }
 .logo { font-family: var(--serif); font-size: 30px; text-decoration: none; }
+.site-search { flex: 1 1 280px; max-width: 420px; display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--stone); border-radius: 999px; padding: 0 8px 0 16px; height: 48px; }
+.site-search:focus-within { border-color: var(--olive); box-shadow: 0 0 0 3px rgba(92, 90, 69, .15); }
+.site-search svg { width: 18px; height: 18px; flex: none; color: var(--olive); }
+.site-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font-size: 16px; height: 44px; }
+.site-search input::-webkit-search-cancel-button { cursor: pointer; }
+.site-search kbd { font: inherit; font-size: 12px; color: var(--olive); border: 1px solid var(--stone); border-radius: 6px; padding: 1px 7px; }
+.site-search:focus-within kbd { display: none; }
+.snippet { font-size: 14px; color: var(--ink); background: var(--ground); border-radius: 10px; padding: 8px 10px; }
+.snippet b { font-weight: 700; color: var(--olive); }
+mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2px; }
+.search-head { padding-top: 24px; padding-bottom: 8px; }
+.search-head h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(36px, 5vw, 56px); line-height: 1.05; }
+.search-head p { margin: 8px 0 0; color: var(--olive); }
 .pill-nav { display: flex; flex-wrap: wrap; gap: 4px; background: var(--surface); border: 1px solid var(--stone); border-radius: 999px; padding: 5px; font-size: 15px; font-weight: 500; }
 .pill-nav a { text-decoration: none; padding: 9px 18px; border-radius: 999px; }
 .pill-nav a[aria-current="page"] { background: var(--ink); color: var(--on-dark); }
@@ -125,6 +138,8 @@ button { cursor: pointer; }
 
 @media (max-width: 860px) {
   .wrap { padding-left: 18px; padding-right: 18px; }
+  .site-search { order: 3; flex-basis: 100%; max-width: none; }
+  .site-search kbd { display: none; }
   .pill-nav { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
   .pill-nav a { white-space: nowrap; padding: 9px 14px; }
   .hero { grid-template-columns: minmax(0, 1fr); }

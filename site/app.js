@@ -54,6 +54,9 @@
       on ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current');
     });
     if (view === 'recipe') return renderRecipe(parts[1]);
+    if (view === 'search') return renderSearch(params.get('q') || '');
+    const box = document.getElementById('q');
+    if (box && document.activeElement !== box) box.value = '';
     state.terms = (params.get('i') || '').split(',').map(norm).filter(Boolean);
     renderHome(view);
   }
@@ -143,14 +146,114 @@
     if (terms.length) input.focus({ preventScroll: true });
   }
 
-  function card(r, hits, nTerms) {
+  function card(r, hits, nTerms, opts = {}) {
     const meta = [timeLabel(r), r.servings ? 'serves ' + r.servings : '', stars(r.rating)].filter(Boolean).join(' · ');
     const partial = nTerms && hits < nTerms ? `<span class="badge">uses ${hits} of ${nTerms}</span>` : '';
     const fav = !partial && r.status === 'Family Favorite' ? '<span class="badge">Family favorite</span>' : '';
     return `<a class="card" href="#/recipe/${esc(r.slug)}">
       ${thumb(r, 'thumb')}
-      <div class="card-body">${partial || fav}<div class="card-title">${esc(r.name)}</div><div class="card-meta">${esc(meta)}</div></div>
+      <div class="card-body">${partial || fav}<div class="card-title">${opts.title || esc(r.name)}</div><div class="card-meta">${esc(meta)}</div>${opts.snippet ? `<div class="snippet">${opts.snippet}</div>` : ''}</div>
     </a>`;
+  }
+
+  // ---------- full-text search ----------
+  const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const wordRe = (t) => new RegExp('\\b' + reEsc(singular(t)), 'i');
+
+  function fieldsOf(r) {
+    const f = [{ label: 'Name', text: r.name, w: 10 }];
+    const tags = [r.cuisine, r.mealType, ...(r.occasion || []), ...(r.keyIngredients || []), ...(r.method || [])].filter(Boolean);
+    if (tags.length) f.push({ label: 'Tags', text: tags.join(' · '), w: 5 });
+    (r.ingredientGroups || []).forEach((g) => g.items.forEach((it) => f.push({ label: 'Ingredient', text: it, w: 3 })));
+    (r.notes || []).forEach((n) => f.push({ label: 'Note', text: n, w: 2 }));
+    (r.steps || []).forEach((s, i) => f.push({ label: 'Step ' + (i + 1), text: s, w: 1 }));
+    if (r.source) f.push({ label: 'From', text: r.source, w: 1 });
+    return f;
+  }
+
+  function highlight(text, tokens) {
+    let out = esc(text);
+    tokens.forEach((t) => { out = out.replace(new RegExp('\\b(' + reEsc(esc(singular(t))) + '[\\w\\u00C0-\\u024F]*)', 'gi'), '<mark>$1</mark>'); });
+    return out;
+  }
+
+  function clip(text, tokens, max = 120) {
+    if (text.length <= max) return text;
+    const m = text.search(wordRe(tokens.find((t) => wordRe(t).test(text)) || tokens[0]));
+    const start = Math.max(0, Math.min(m - 30, text.length - max));
+    return (start ? '…' : '') + text.slice(start, start + max).trim() + (start + max < text.length ? '…' : '');
+  }
+
+  function search(q) {
+    const tokens = norm(q).split(/[\s,]+/).filter((t) => t.length > 1 || /\d/.test(t));
+    if (!tokens.length) return { tokens, results: [] };
+    const results = [];
+    for (const r of visible()) {
+      const fields = fieldsOf(r);
+      let score = 0, best = null, ok = true;
+      for (const t of tokens) {
+        const re = wordRe(t);
+        const hits = fields.filter((f) => re.test(f.text));
+        if (!hits.length) { ok = false; break; }
+        score += Math.max(...hits.map((h) => h.w));
+        const detail = hits.find((h) => h.label !== 'Name' && h.label !== 'Tags');
+        if (detail && (!best || detail.w > best.w)) best = detail;
+      }
+      if (!ok) continue;
+      if (norm(r.name).includes(norm(q))) score += 20;
+      if (r.status === 'Family Favorite') score += 1;
+      results.push({ r, score, best });
+    }
+    results.sort((a, b) => b.score - a.score || a.r.name.localeCompare(b.r.name));
+    return { tokens, results };
+  }
+
+  function renderSearch(q) {
+    const box = document.getElementById('q');
+    if (box && document.activeElement !== box) box.value = q;
+    const { tokens, results } = search(q);
+    document.title = (q ? `"${q}" · ` : '') + 'Search · Our Family Table';
+    const heading = !tokens.length ? 'Search the recipe book'
+      : `${results.length} ${results.length === 1 ? 'recipe' : 'recipes'} for “${esc(q.trim())}”`;
+    main.innerHTML = `
+      <section class="search-head wrap">
+        <h1>${heading}</h1>
+        <p>${tokens.length ? 'Searching names, ingredients, steps and notes.' : 'Try a dish, an ingredient, a person (“Grandma”), or a word from the notes.'}</p>
+      </section>
+      <section class="results wrap" style="padding-top: 24px">
+        ${results.length ? `<div class="grid">${results.map(({ r, best }) => card(r, 0, 0, {
+          title: highlight(r.name, tokens),
+          snippet: best ? `<b>${esc(best.label)}:</b> ${highlight(clip(best.text, tokens), tokens)}` : '',
+        })).join('')}</div>`
+          : tokens.length ? `<div class="empty">Nothing matches “${esc(q.trim())}”. Check the spelling, try fewer words, or <a href="#/?i=${encodeURIComponent(tokens.join(','))}">search by ingredient</a> instead.</div>` : ''}
+      </section>`;
+  }
+
+  function wireSearchBox() {
+    const form = document.getElementById('site-search');
+    const box = document.getElementById('q');
+    if (!form || !box) return;
+    let timer;
+    const go = (immediate) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const v = box.value.trim();
+        const onSearch = parseHash().parts[0] === 'search';
+        const target = v ? '#/search?q=' + encodeURIComponent(v) : '#/';
+        if (onSearch) location.replace(target);
+        else if (v) location.hash = target;
+      }, immediate ? 0 : 180);
+    };
+    box.addEventListener('input', () => go(false));
+    form.addEventListener('submit', (e) => { e.preventDefault(); go(true); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== '/' || cook || e.metaKey || e.ctrlKey) return;
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+      e.preventDefault();
+      box.focus();
+      box.select();
+    });
   }
 
   // ---------- recipe page ----------
@@ -253,6 +356,7 @@
       main.innerHTML = '<section class="wrap"><div class="empty">The recipe book couldn\'t load. Refresh to try again.</div></section>';
       return;
     }
+    wireSearchBox();
     window.addEventListener('hashchange', () => { document.title = 'Our Family Table'; route(); });
     route();
   }
