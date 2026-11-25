@@ -177,7 +177,10 @@ function extFrom(url) {
 
 async function main() {
   const token = process.env.NOTION_TOKEN;
-  if (!token) throw new Error('NOTION_TOKEN is not set.');
+  if (!token) {
+    console.warn('NOTION_TOKEN is not set: publishing the recipes already in site/data/recipes.json.');
+    return;
+  }
   const dsId = process.env.NOTION_DATA_SOURCE_ID || DEFAULT_DS;
   const publish = (process.env.SITE_STATUSES || 'To Try,Tested,Family Favorite').split(',').map((s) => s.trim());
 
