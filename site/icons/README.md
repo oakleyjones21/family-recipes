@@ -10,6 +10,8 @@ In Notion, click a page's icon, choose **Link** and paste a PNG address from the
 
 | Icon | Notion link (PNG) |
 | --- | --- |
+| --- | --- |
+| appetizer | https://oakleyjones21.github.io/family-recipes/icons/png/appetizer.png |
 | asian | https://oakleyjones21.github.io/family-recipes/icons/png/asian.png |
 | beef | https://oakleyjones21.github.io/family-recipes/icons/png/beef.png |
 | bread | https://oakleyjones21.github.io/family-recipes/icons/png/bread.png |
@@ -47,6 +49,7 @@ In Notion, click a page's icon, choose **Link** and paste a PNG address from the
 | rolling-pin | https://oakleyjones21.github.io/family-recipes/icons/png/rolling-pin.png |
 | salad | https://oakleyjones21.github.io/family-recipes/icons/png/salad.png |
 | sandwich | https://oakleyjones21.github.io/family-recipes/icons/png/sandwich.png |
+| sauce | https://oakleyjones21.github.io/family-recipes/icons/png/sauce.png |
 | scale-recipe | https://oakleyjones21.github.io/family-recipes/icons/png/scale-recipe.png |
 | search | https://oakleyjones21.github.io/family-recipes/icons/png/search.png |
 | servings | https://oakleyjones21.github.io/family-recipes/icons/png/servings.png |

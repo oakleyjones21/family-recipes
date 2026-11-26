@@ -31,6 +31,8 @@
 
   // Line icons (24px grid). Each value is one SVG path; see icons/svg/ for the files.
   const ICON_PATHS = {
+      "appetizer": "M2 15.5H22M3.5 15.5C4 18.3 7.5 20 12 20C16.5 20 20 18.3 20.5 15.5M4.1 12.8a2.7 2.7 0 1 0 5.4 0a2.7 2.7 0 1 0 -5.4 0M9.3 12.8a2.7 2.7 0 1 0 5.4 0a2.7 2.7 0 1 0 -5.4 0M14.5 12.8a2.7 2.7 0 1 0 5.4 0a2.7 2.7 0 1 0 -5.4 0M6.8 10.1V5.5M12 10.1V5.5M17.2 10.1V5.5",
+      "sauce": "M2.5 10H15C17.5 10 19.5 8.8 21.5 6.5C21.5 12.5 18 17 12.5 17H9C5.4 17 2.5 14 2.5 10ZM8.5 17L8 20H15L14.5 17M2.5 10C0.8 10.5 1 13.8 3.4 13.8M21.5 6.5V9M5.5 12.5H15.5",
       "breakfast": "M7 6C10 3 15 4 17 7C20 8 21 12 19 15C18 19 13 21 9 19C5 18 3 14 4 10C4.5 8 5.5 7 7 6ZM9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0",
       "dinner": "M8.0 12a6.5 6.5 0 1 0 13.0 0a6.5 6.5 0 1 0 -13.0 0M11.0 12a3.5 3.5 0 1 0 7.0 0a3.5 3.5 0 1 0 -7.0 0M3.5 4V8.5C3.5 9.5 4.2 10 5 10C5.8 10 6.5 9.5 6.5 8.5V4M5 4V20",
       "dessert": "M4 19H20V12L4 9ZM4 13L20 15.5M13.5 8.6a1.5 1.5 0 1 0 3.0 0a1.5 1.5 0 1 0 -3.0 0M15 7.1C15 6 15.8 5 17 4.5",
@@ -67,7 +69,7 @@
   // Pick a category icon from the recipe's meal type and cuisine.
   function categoryIcon(r) {
     const meal = norm(r.mealType), cuisine = norm(r.cuisine);
-    const byMeal = { breakfast: 'breakfast', brunch: 'breakfast', dessert: 'dessert', soup: 'soup', salad: 'salad', bread: 'bread', baking: 'bread', drink: 'drinks', drinks: 'drinks', side: 'sides', sides: 'sides', lunch: 'sandwich', snack: 'cookie', snacks: 'cookie' };
+    const byMeal = { breakfast: 'breakfast', brunch: 'breakfast', dessert: 'dessert', soup: 'soup', salad: 'salad', bread: 'bread', baking: 'bread', drink: 'drinks', drinks: 'drinks', side: 'sides', sides: 'sides', lunch: 'sandwich', snack: 'cookie', snacks: 'cookie', appetizer: 'appetizer', appetizers: 'appetizer', 'sauce & staple': 'sauce', sauce: 'sauce', staple: 'sauce' };
     const byCuisine = { italian: 'pasta', asian: 'asian', chinese: 'asian', japanese: 'asian', thai: 'asian', korean: 'asian', vietnamese: 'asian', mexican: 'taco', 'tex-mex': 'taco', comfort: 'comfort', bbq: 'grill', seafood: 'fish' };
     return byMeal[meal] || byCuisine[cuisine] || 'dinner';
   }
@@ -321,11 +323,11 @@
         <a class="back" href="javascript:history.back()">← Back</a>
         <article class="recipe-card">
           <div class="recipe-side">
-            <span class="eyebrow eyebrow-icon">${icon(categoryIcon(r))}${esc([r.cuisine, r.mealType].filter(Boolean).join(' · ') || 'Recipe')}</span>
+            <span class="eyebrow">${esc([r.cuisine, r.mealType].filter(Boolean).join(' · ') || 'Recipe')}</span>
             <h1>${esc(r.name)}</h1>
             <div class="stats">${stat('SERVES', r.servings, 'servings')}${stat('PREP', r.prep ? r.prep + ' min' : '', 'prep-time')}${stat('COOK', r.cook ? r.cook + ' min' : '', 'cook-time')}</div>
             ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
-            <h2>${icon('ingredients', 'ico-h')}Ingredients</h2>
+            <h2>Ingredients</h2>
             ${(r.ingredientGroups || []).map((g) => `
               ${g.label ? `<p class="group-label">${esc(g.label)}</p>` : ''}
               <div class="checklist">${g.items.map((it) => `<label><input type="checkbox" id="i${n++}"><span>${rich(it)}</span></label>`).join('')}</div>`).join('')}
@@ -333,11 +335,11 @@
           </div>
           <div class="recipe-main">
             ${thumb(r, 'hero-photo')}
-            <h2>${icon('steps', 'ico-h')}Instructions</h2>
+            <h2>Instructions</h2>
             ${(r.steps || []).map((s, i) => `<div class="step"><span class="step-num">${i + 1}</span><p>${rich(s)}</p></div>`).join('')}
           </div>
           ${(r.notes || []).length || (r.related || []).length ? `<aside class="notes">
-            ${(r.notes || []).length ? `<h2>${icon('notes', 'ico-h')}Notes &amp; variations</h2><ul>${r.notes.map((x) => `<li>${rich(x)}</li>`).join('')}</ul>` : ''}
+            ${(r.notes || []).length ? `<h2>Notes &amp; variations</h2><ul>${r.notes.map((x) => `<li>${rich(x)}</li>`).join('')}</ul>` : ''}
             ${(r.related || []).length ? `<div class="related"><h2>Related recipes</h2><ul>${r.related.map((x) => `<li><a class="inline-link" href="#/recipe/${esc(x.slug)}">${esc(x.name)}</a></li>`).join('')}</ul></div>` : ''}
           </aside>` : ''}
           <div class="actions">
