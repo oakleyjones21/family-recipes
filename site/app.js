@@ -283,12 +283,12 @@
             ${thumb(r, 'hero-photo')}
             <h2>Instructions</h2>
             ${(r.steps || []).map((s, i) => `<div class="step"><span class="step-num">${i + 1}</span><p>${esc(s)}</p></div>`).join('')}
-            ${(r.notes || []).length ? `<aside class="notes"><h2>Notes &amp; variations</h2><ul>${r.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></aside>` : ''}
             <div class="actions">
               ${(r.steps || []).length ? '<button type="button" class="btn" id="cook-btn">Start cooking mode</button>' : ''}
               <button type="button" class="btn btn-ghost" onclick="window.print()">Print card</button>
             </div>
           </div>
+          ${(r.notes || []).length ? `<aside class="notes"><h2>Notes &amp; variations</h2><ul>${r.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></aside>` : ''}
         </article>
       </section>
       <div class="cook" id="cook" hidden role="dialog" aria-modal="true" aria-label="Cooking mode"></div>`;
