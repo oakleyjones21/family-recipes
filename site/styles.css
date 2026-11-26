@@ -34,7 +34,9 @@ button { cursor: pointer; }
 
 /* Header */
 .site-header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; padding-top: 24px; padding-bottom: 24px; }
-.logo { font-family: var(--serif); font-size: 30px; text-decoration: none; }
+.logo { font-family: var(--serif); font-size: 30px; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+.logo-mark { width: 40px; height: 40px; flex: none; }
+.logo-leaf { stroke: var(--olive); }
 .site-search { flex: 1 1 280px; max-width: 420px; display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--stone); border-radius: 999px; padding: 0 8px 0 16px; height: 48px; }
 .site-search:focus-within { border-color: var(--olive); box-shadow: 0 0 0 3px rgba(92, 90, 69, .15); }
 .site-search svg { width: 18px; height: 18px; flex: none; color: var(--olive); }
@@ -188,3 +190,12 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
   .notes ul { gap: 1px; padding-left: 16px; }
   a { text-decoration: none; }
 }
+
+/* ---------- line icons ---------- */
+.ico { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; }
+.ico-h { width: .9em; height: .9em; margin-right: .3em; vertical-align: -0.08em; color: var(--olive); }
+.card-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.card-meta span, .badge, .filter, .btn, .stat-label, .eyebrow-icon { display: inline-flex; align-items: center; gap: 6px; }
+.badge .ico { color: var(--brown); }
+.stat-label .ico { width: 15px; height: 15px; }
+.thumb .ico-lg, .hero-photo .ico-lg { color: var(--ink); }
