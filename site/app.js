@@ -31,6 +31,8 @@
 
   // Line icons (24px grid). Each value is one SVG path; see icons/svg/ for the files.
   const ICON_PATHS = {
+      "appetizer": "M12 2.5V5.7M12 11.3V13M12 18V21.5M12 2.5L15 3.5L12 4.5M9.2 8.5a2.8 2.8 0 1 0 5.6 0a2.8 2.8 0 1 0 -5.6 0M8.5 13H15.5V18H8.5Z",
+      "sauce": "M8 3.5H16V6.5H8ZM8.5 6.5C6.5 7.5 5.5 9 5.5 11V18C5.5 19.4 6.6 20.5 8 20.5H16C17.4 20.5 18.5 19.4 18.5 18V11C18.5 9 17.5 7.5 15.5 6.5M8.5 12H15.5V16.5H8.5Z",
       "breakfast": "M7 6C10 3 15 4 17 7C20 8 21 12 19 15C18 19 13 21 9 19C5 18 3 14 4 10C4.5 8 5.5 7 7 6ZM9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0",
       "dinner": "M8.0 12a6.5 6.5 0 1 0 13.0 0a6.5 6.5 0 1 0 -13.0 0M11.0 12a3.5 3.5 0 1 0 7.0 0a3.5 3.5 0 1 0 -7.0 0M3.5 4V8.5C3.5 9.5 4.2 10 5 10C5.8 10 6.5 9.5 6.5 8.5V4M5 4V20",
       "dessert": "M4 19H20V12L4 9ZM4 13L20 15.5M13.5 8.6a1.5 1.5 0 1 0 3.0 0a1.5 1.5 0 1 0 -3.0 0M15 7.1C15 6 15.8 5 17 4.5",
@@ -67,7 +69,7 @@
   // Pick a category icon from the recipe's meal type and cuisine.
   function categoryIcon(r) {
     const meal = norm(r.mealType), cuisine = norm(r.cuisine);
-    const byMeal = { breakfast: 'breakfast', brunch: 'breakfast', dessert: 'dessert', soup: 'soup', salad: 'salad', bread: 'bread', baking: 'bread', drink: 'drinks', drinks: 'drinks', side: 'sides', sides: 'sides', lunch: 'sandwich', snack: 'cookie', snacks: 'cookie' };
+    const byMeal = { breakfast: 'breakfast', brunch: 'breakfast', dessert: 'dessert', soup: 'soup', salad: 'salad', bread: 'bread', baking: 'bread', drink: 'drinks', drinks: 'drinks', side: 'sides', sides: 'sides', lunch: 'sandwich', snack: 'cookie', snacks: 'cookie', appetizer: 'appetizer', appetizers: 'appetizer', 'sauce & staple': 'sauce', sauce: 'sauce', staple: 'sauce' };
     const byCuisine = { italian: 'pasta', asian: 'asian', chinese: 'asian', japanese: 'asian', thai: 'asian', korean: 'asian', vietnamese: 'asian', mexican: 'taco', 'tex-mex': 'taco', comfort: 'comfort', bbq: 'grill', seafood: 'fish' };
     return byMeal[meal] || byCuisine[cuisine] || 'dinner';
   }
