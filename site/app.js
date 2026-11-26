@@ -31,8 +31,8 @@
 
   // Line icons (24px grid). Each value is one SVG path; see icons/svg/ for the files.
   const ICON_PATHS = {
-      "appetizer": "M12 2.5V5.7M12 11.3V13M12 18V21.5M12 2.5L15 3.5L12 4.5M9.2 8.5a2.8 2.8 0 1 0 5.6 0a2.8 2.8 0 1 0 -5.6 0M8.5 13H15.5V18H8.5Z",
-      "sauce": "M8 3.5H16V6.5H8ZM8.5 6.5C6.5 7.5 5.5 9 5.5 11V18C5.5 19.4 6.6 20.5 8 20.5H16C17.4 20.5 18.5 19.4 18.5 18V11C18.5 9 17.5 7.5 15.5 6.5M8.5 12H15.5V16.5H8.5Z",
+      "appetizer": "M2 15.5H22M3.5 15.5C4 18.3 7.5 20 12 20C16.5 20 20 18.3 20.5 15.5M4.1 12.8a2.7 2.7 0 1 0 5.4 0a2.7 2.7 0 1 0 -5.4 0M9.3 12.8a2.7 2.7 0 1 0 5.4 0a2.7 2.7 0 1 0 -5.4 0M14.5 12.8a2.7 2.7 0 1 0 5.4 0a2.7 2.7 0 1 0 -5.4 0M6.8 10.1V5.5M12 10.1V5.5M17.2 10.1V5.5",
+      "sauce": "M2.5 10H15C17.5 10 19.5 8.8 21.5 6.5C21.5 12.5 18 17 12.5 17H9C5.4 17 2.5 14 2.5 10ZM8.5 17L8 20H15L14.5 17M2.5 10C0.8 10.5 1 13.8 3.4 13.8M21.5 6.5V9M5.5 12.5H15.5",
       "breakfast": "M7 6C10 3 15 4 17 7C20 8 21 12 19 15C18 19 13 21 9 19C5 18 3 14 4 10C4.5 8 5.5 7 7 6ZM9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0",
       "dinner": "M8.0 12a6.5 6.5 0 1 0 13.0 0a6.5 6.5 0 1 0 -13.0 0M11.0 12a3.5 3.5 0 1 0 7.0 0a3.5 3.5 0 1 0 -7.0 0M3.5 4V8.5C3.5 9.5 4.2 10 5 10C5.8 10 6.5 9.5 6.5 8.5V4M5 4V20",
       "dessert": "M4 19H20V12L4 9ZM4 13L20 15.5M13.5 8.6a1.5 1.5 0 1 0 3.0 0a1.5 1.5 0 1 0 -3.0 0M15 7.1C15 6 15.8 5 17 4.5",
@@ -323,11 +323,11 @@
         <a class="back" href="javascript:history.back()">← Back</a>
         <article class="recipe-card">
           <div class="recipe-side">
-            <span class="eyebrow eyebrow-icon">${icon(categoryIcon(r))}${esc([r.cuisine, r.mealType].filter(Boolean).join(' · ') || 'Recipe')}</span>
+            <span class="eyebrow">${esc([r.cuisine, r.mealType].filter(Boolean).join(' · ') || 'Recipe')}</span>
             <h1>${esc(r.name)}</h1>
             <div class="stats">${stat('SERVES', r.servings, 'servings')}${stat('PREP', r.prep ? r.prep + ' min' : '', 'prep-time')}${stat('COOK', r.cook ? r.cook + ' min' : '', 'cook-time')}</div>
             ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
-            <h2>${icon('ingredients', 'ico-h')}Ingredients</h2>
+            <h2>Ingredients</h2>
             ${(r.ingredientGroups || []).map((g) => `
               ${g.label ? `<p class="group-label">${esc(g.label)}</p>` : ''}
               <div class="checklist">${g.items.map((it) => `<label><input type="checkbox" id="i${n++}"><span>${rich(it)}</span></label>`).join('')}</div>`).join('')}
@@ -335,11 +335,11 @@
           </div>
           <div class="recipe-main">
             ${thumb(r, 'hero-photo')}
-            <h2>${icon('steps', 'ico-h')}Instructions</h2>
+            <h2>Instructions</h2>
             ${(r.steps || []).map((s, i) => `<div class="step"><span class="step-num">${i + 1}</span><p>${rich(s)}</p></div>`).join('')}
           </div>
           ${(r.notes || []).length || (r.related || []).length ? `<aside class="notes">
-            ${(r.notes || []).length ? `<h2>${icon('notes', 'ico-h')}Notes &amp; variations</h2><ul>${r.notes.map((x) => `<li>${rich(x)}</li>`).join('')}</ul>` : ''}
+            ${(r.notes || []).length ? `<h2>Notes &amp; variations</h2><ul>${r.notes.map((x) => `<li>${rich(x)}</li>`).join('')}</ul>` : ''}
             ${(r.related || []).length ? `<div class="related"><h2>Related recipes</h2><ul>${r.related.map((x) => `<li><a class="inline-link" href="#/recipe/${esc(x.slug)}">${esc(x.name)}</a></li>`).join('')}</ul></div>` : ''}
           </aside>` : ''}
           <div class="actions">
