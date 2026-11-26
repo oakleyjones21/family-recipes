@@ -89,10 +89,11 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
 /* Recipe page */
 .recipe { padding-bottom: 72px; }
 .back { display: inline-flex; gap: 6px; align-items: center; margin: 8px 0 20px; font-weight: 500; text-decoration: none; }
-.recipe-card { background: var(--surface); border: 1px solid var(--stone); border-radius: 36px; padding: 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); grid-template-rows: auto 1fr; grid-template-areas: "side main" "side notes"; gap: 24px 48px; }
+.recipe-card { background: var(--surface); border: 1px solid var(--stone); border-radius: 36px; padding: 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); grid-template-rows: auto auto 1fr; grid-template-areas: "side main" "side notes" "side actions"; gap: 24px 48px; }
 .recipe-side { grid-area: side; }
 .recipe-main { grid-area: main; }
 .recipe-card > .notes { grid-area: notes; align-self: start; }
+.recipe-card > .actions { grid-area: actions; align-self: start; margin-top: 0; }
 .recipe-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .recipe h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(44px, 6vw, 64px); line-height: 1; }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -149,7 +150,7 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
   .hero-main { padding: 28px; }
   .matches { min-height: 0; flex-direction: row; align-items: center; padding: 24px; }
   .matches .num { font-size: 72px; }
-  .recipe-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "side" "main" "notes"; padding: 24px; gap: 32px; }
+  .recipe-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "side" "main" "notes" "actions"; padding: 24px; gap: 32px; }
 }
 
 /* Print: one clean 8.5 x 11 card */
