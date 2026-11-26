@@ -59,6 +59,16 @@ async function blockTree(token, id) {
 
 // ---------- parsing (pure; tested in scripts/test-parse.mjs) ----------
 const plain = (rt) => (rt || []).map((t) => t.plain_text).join('').trim();
+// Rich text with links kept as [text](url) so the site can render them. Mentions of pages carry an href too.
+export function rich(rt) {
+  return (rt || []).map((t) => {
+    const text = t.plain_text ?? '';
+    if (!t.href || !text.trim()) return text;
+    const lead = text.match(/^\s*/)[0], trail = text.match(/\s*$/)[0];
+    const label = text.trim().replace(/\[/g, '(').replace(/\]/g, ')');
+    return `${lead}[${label}](${t.href})${trail}`;
+  }).join('').trim();
+}
 const allItalic = (rt) => (rt || []).length > 0 && rt.every((t) => !t.plain_text.trim() || t.annotations?.italic);
 
 export function slugify(s) {
@@ -76,6 +86,7 @@ function prop(p) {
     case 'url': return p.url;
     case 'checkbox': return p.checkbox;
     case 'date': return p.date?.start ?? null;
+    case 'relation': return (p.relation || []).map((r) => r.id);
     default: return null;
   }
 }
@@ -99,8 +110,37 @@ export function parseProperties(page) {
     rating: rating ? (rating.match(/★/g) || []).length : 0,
     source: prop(P['Source']),
     sourceLink: prop(P['Source Link']),
+    relatedIds: prop(P['Related Recipes']) || [],
     lastEdited: page.last_edited_time,
   };
+}
+
+const NOTION_HOST = /(^|\.)notion\.(so|com|site)$/i;
+const MD_LINK = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g;
+
+// Turns links to other recipe pages into site links (#/recipe/slug). Notion links to anything we don't
+// publish become plain text; other links stay as they are. Also resolves the Related Recipes relation.
+export function resolveLinks(recipes) {
+  const bySlug = new Map(), byId = new Map();
+  for (const r of recipes) byId.set(String(r.id).replace(/-/g, '').toLowerCase(), r);
+  for (const r of recipes) bySlug.set(r.slug, r);
+  const fix = (str) => typeof str !== 'string' ? str : str.replace(MD_LINK, (all, label, url) => {
+    let host = '';
+    try { host = new URL(url).hostname; } catch { return label; }
+    if (!NOTION_HOST.test(host)) return all;
+    const id = (url.match(/[0-9a-f]{32}/i) || [])[0] || (url.replace(/-/g, '').match(/[0-9a-f]{32}/i) || [])[0];
+    const hit = id && byId.get(id.toLowerCase());
+    return hit ? `[${label}](#/recipe/${hit.slug})` : label;
+  });
+  for (const r of recipes) {
+    r.ingredientGroups = (r.ingredientGroups || []).map((g) => ({ ...g, items: g.items.map(fix) }));
+    r.steps = (r.steps || []).map(fix);
+    r.notes = (r.notes || []).map(fix);
+    r.related = (r.relatedIds || []).map((id) => byId.get(String(id).replace(/-/g, '').toLowerCase()))
+      .filter((x) => x && x !== r).map((x) => ({ slug: x.slug, name: x.name }));
+    delete r.relatedIds;
+  }
+  return recipes;
 }
 
 const fileUrl = (img) => img?.type === 'external' ? img.external?.url : img?.file?.url;
@@ -134,9 +174,9 @@ export function parseBody(blocks) {
       if (t === 'callout') {
         if (/note|variation|tip/i.test(text)) {
           const kids = b._children || [];
-          kids.forEach((k) => { const s = plain(k[k.type]?.rich_text); if (s) notes.push(s); });
+          kids.forEach((k) => { const s = rich(k[k.type]?.rich_text); if (s) notes.push(s); });
           // a callout whose notes are written inline after the title line
-          const rest = text.replace(/^[^\n]*(notes?|variations?|tips?)[^\n]*\n?/i, '').trim();
+          const rest = rich(data.rich_text).replace(/^[^\n]*(notes?|variations?|tips?)[^\n]*\n?/i, '').trim();
           if (rest) rest.split('\n').map((s) => s.replace(/^[-•]\s*/, '').trim()).filter(Boolean).forEach((s) => notes.push(s));
         } else if (b._children) walk(b._children, ctx); // e.g. the photo callout holding an image
         continue;
@@ -147,14 +187,14 @@ export function parseBody(blocks) {
       if (section === 'ingredients') {
         if (t === 'paragraph' && text) {
           if (allItalic(data.rich_text) || /:$/.test(text)) groups.push({ label: text.replace(/:$/, ''), items: [] });
-          else group().items.push(text);
+          else group().items.push(rich(data.rich_text));
         } else if ((t === 'bulleted_list_item' || t === 'numbered_list_item' || t === 'to_do') && text) {
-          group().items.push(text);
+          group().items.push(rich(data.rich_text));
         }
       } else if (section === 'instructions') {
-        if ((t === 'numbered_list_item' || t === 'bulleted_list_item' || t === 'paragraph') && text) steps.push(text);
+        if ((t === 'numbered_list_item' || t === 'bulleted_list_item' || t === 'paragraph') && text) steps.push(rich(data.rich_text));
       } else if (section === 'notes') {
-        if (text) notes.push(text);
+        if (text) notes.push(rich(data.rich_text));
       }
       if (b._children && t !== 'toggle') walk(b._children, ctx);
     }
@@ -212,6 +252,7 @@ async function main() {
     console.log(`  ✓ ${meta.name}`);
   }
 
+  resolveLinks(recipes);
   recipes.sort((a, b) => a.name.localeCompare(b.name));
   await writeFile(path.join(SITE, 'data', 'recipes.json'), JSON.stringify({ updated: new Date().toISOString(), recipes }, null, 2));
   console.log(`Synced ${recipes.length} recipes (of ${pages.length} in Notion).`);
