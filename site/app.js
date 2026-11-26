@@ -10,6 +10,12 @@
 
   // ---------- helpers ----------
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // Text from the sync keeps links as [text](url). Only recipe links (#/recipe/…) and http(s) links are rendered.
+  const LINK = /\[([^\]]+)\]\((#\/recipe\/[a-z0-9-]+|https?:\/\/[^)\s]+)\)/g;
+  const unlink = (s) => String(s ?? '').replace(LINK, '$1');
+  const rich = (s) => esc(s).replace(LINK, (_, label, url) => url.startsWith('#/')
+    ? `<a class="inline-link" href="${url}">${label}</a>`
+    : `<a class="inline-link" href="${url}" rel="noopener" target="_blank">${label}</a>`);
   const norm = (s) => String(s || '').toLowerCase().trim();
   const singular = (w) => (w.length > 3 && w.endsWith('es') && !w.endsWith('ses') ? w.slice(0, -2) : w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
   const totalMin = (r) => (r.prep || 0) + (r.cook || 0);
@@ -35,7 +41,7 @@
     const s = singular(t);
     if ((r.keyIngredients || []).some((k) => { const n = norm(k); return n === t || n === s || n.includes(s); })) return true;
     const re = new RegExp('\\b' + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    return (r.ingredientGroups || []).some((g) => g.items.some((line) => re.test(line)));
+    return (r.ingredientGroups || []).some((g) => g.items.some((line) => re.test(unlink(line))));
   }
 
   // ---------- routing ----------
@@ -164,9 +170,9 @@
     const f = [{ label: 'Name', text: r.name, w: 10 }];
     const tags = [r.cuisine, r.mealType, ...(r.occasion || []), ...(r.keyIngredients || []), ...(r.method || [])].filter(Boolean);
     if (tags.length) f.push({ label: 'Tags', text: tags.join(' · '), w: 5 });
-    (r.ingredientGroups || []).forEach((g) => g.items.forEach((it) => f.push({ label: 'Ingredient', text: it, w: 3 })));
-    (r.notes || []).forEach((n) => f.push({ label: 'Note', text: n, w: 2 }));
-    (r.steps || []).forEach((s, i) => f.push({ label: 'Step ' + (i + 1), text: s, w: 1 }));
+    (r.ingredientGroups || []).forEach((g) => g.items.forEach((it) => f.push({ label: 'Ingredient', text: unlink(it), w: 3 })));
+    (r.notes || []).forEach((n) => f.push({ label: 'Note', text: unlink(n), w: 2 }));
+    (r.steps || []).forEach((s, i) => f.push({ label: 'Step ' + (i + 1), text: unlink(s), w: 1 }));
     if (r.source) f.push({ label: 'From', text: r.source, w: 1 });
     return f;
   }
@@ -276,15 +282,18 @@
             <h2>Ingredients</h2>
             ${(r.ingredientGroups || []).map((g) => `
               ${g.label ? `<p class="group-label">${esc(g.label)}</p>` : ''}
-              <div class="checklist">${g.items.map((it) => `<label><input type="checkbox" id="i${n++}"><span>${esc(it)}</span></label>`).join('')}</div>`).join('')}
+              <div class="checklist">${g.items.map((it) => `<label><input type="checkbox" id="i${n++}"><span>${rich(it)}</span></label>`).join('')}</div>`).join('')}
             ${r.source ? `<p class="source">From ${r.sourceLink ? `<a href="${esc(r.sourceLink)}" rel="noopener">${esc(r.source)}</a>` : esc(r.source)}</p>` : ''}
           </div>
           <div class="recipe-main">
             ${thumb(r, 'hero-photo')}
             <h2>Instructions</h2>
-            ${(r.steps || []).map((s, i) => `<div class="step"><span class="step-num">${i + 1}</span><p>${esc(s)}</p></div>`).join('')}
+            ${(r.steps || []).map((s, i) => `<div class="step"><span class="step-num">${i + 1}</span><p>${rich(s)}</p></div>`).join('')}
           </div>
-          ${(r.notes || []).length ? `<aside class="notes"><h2>Notes &amp; variations</h2><ul>${r.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></aside>` : ''}
+          ${(r.notes || []).length || (r.related || []).length ? `<aside class="notes">
+            ${(r.notes || []).length ? `<h2>Notes &amp; variations</h2><ul>${r.notes.map((x) => `<li>${rich(x)}</li>`).join('')}</ul>` : ''}
+            ${(r.related || []).length ? `<div class="related"><h2>Related recipes</h2><ul>${r.related.map((x) => `<li><a class="inline-link" href="#/recipe/${esc(x.slug)}">${esc(x.name)}</a></li>`).join('')}</ul></div>` : ''}
+          </aside>` : ''}
           <div class="actions">
               ${(r.steps || []).length ? '<button type="button" class="btn" id="cook-btn">Start cooking mode</button>' : ''}
               <button type="button" class="btn btn-ghost" onclick="window.print()">Print card</button>
@@ -314,7 +323,7 @@
         <div class="cook-progress" aria-hidden="true">${steps.map((_, k) => `<span class="${k <= i ? 'done' : ''}"></span>`).join('')}</div>
         <button type="button" class="btn btn-ghost" data-c="close">Close</button>
       </div>
-      <div class="cook-step"><span class="eyebrow" style="color:var(--sand)">${esc(cook.r.name)} · Step ${i + 1} of ${steps.length}</span><p>${esc(steps[i])}</p></div>
+      <div class="cook-step"><span class="eyebrow" style="color:var(--sand)">${esc(cook.r.name)} · Step ${i + 1} of ${steps.length}</span><p>${rich(steps[i])}</p></div>
       <div class="cook-nav">
         <button type="button" class="btn btn-ghost" data-c="prev" ${i === 0 ? 'disabled' : ''}>← Back</button>
         <button type="button" class="btn" data-c="${last ? 'close' : 'next'}">${last ? 'Done' : 'Next step →'}</button>

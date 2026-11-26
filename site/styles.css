@@ -93,6 +93,8 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
 .recipe-side { grid-area: side; }
 .recipe-main { grid-area: main; }
 .recipe-card > .notes { grid-area: notes; align-self: start; }
+.notes .related { margin-top: 16px; }
+.inline-link, .related a { color: var(--olive); text-decoration: underline; text-underline-offset: 2px; }
 .recipe-card > .actions { grid-area: actions; align-self: start; margin-top: 0; }
 .recipe-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .recipe h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(44px, 6vw, 64px); line-height: 1; }
