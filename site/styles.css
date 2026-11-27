@@ -35,7 +35,7 @@ button { cursor: pointer; }
 /* Header */
 .site-header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; padding-top: 24px; padding-bottom: 24px; }
 .logo { font-family: var(--serif); font-size: 30px; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
-.logo-mark { width: 50px; height: 28px; flex: none; }
+.logo-mark { width: 44px; height: 44px; flex: none; }
 .logo-leaf { stroke: var(--olive); }
 .site-search { flex: 1 1 280px; max-width: 420px; display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--stone); border-radius: 999px; padding: 0 8px 0 16px; height: 48px; }
 .site-search:focus-within { border-color: var(--olive); box-shadow: 0 0 0 3px rgba(92, 90, 69, .15); }
