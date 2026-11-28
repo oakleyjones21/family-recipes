@@ -61,6 +61,8 @@ const props = parseProperties({
 assert.equal(props.rating, 5);
 assert.equal(props.mealType, 'Dinner');
 assert.deepEqual(props.mealTypes, ['Dinner']);
+const twoWay = parseProperties({ id: 'p4', properties: { Name: { type: 'title', title: rt('Waffles') }, 'Related Recipes': { type: 'relation', relation: [{ id: 'a' }, { id: 'b' }] }, 'Related From': { type: 'relation', relation: [{ id: 'b' }, { id: 'c' }] } } });
+assert.deepEqual(twoWay.relatedIds, ['a', 'b', 'c']);
 const multiMeal = parseProperties({ id: 'p2', properties: { Name: { type: 'title', title: rt('Pancakes') }, 'Meal Type': { type: 'multi_select', multi_select: [{ name: 'Breakfast' }, { name: 'Dessert' }] } } });
 assert.deepEqual(multiMeal.mealTypes, ['Breakfast', 'Dessert']);
 assert.equal(multiMeal.mealType, 'Breakfast');

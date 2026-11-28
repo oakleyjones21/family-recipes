@@ -114,7 +114,8 @@ export function parseProperties(page) {
     rating: rating ? (rating.match(/★/g) || []).length : 0,
     source: prop(P['Source']),
     sourceLink: prop(P['Source Link']),
-    relatedIds: prop(P['Related Recipes']) || [],
+    // Related Recipes has a two-way twin (Related From), so a link added on either recipe shows on both.
+    relatedIds: [...new Set([...(prop(P['Related Recipes']) || []), ...(prop(P['Related From']) || [])])],
     lastEdited: page.last_edited_time,
   };
 }
