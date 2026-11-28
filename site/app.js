@@ -153,7 +153,7 @@
     const partial = terms.length ? scored.length - full : 0;
     const plural = (n) => `${n} ${n === 1 ? 'recipe' : 'recipes'}`;
     const matchLine = !terms.length
-      ? `<b>${plural(scored.length)}</b> in the book`
+      ? ''
       : `<b>${plural(full)}</b> ${full === 1 ? 'uses' : 'use'} ${terms.length === 1 ? 'it' : terms.length === 2 ? 'both' : 'all of them'}`
         + (partial ? ` · ${partial} more ${partial === 1 ? 'uses' : 'use'} ${terms.length === 2 ? 'one' : 'some'}` : '');
 
@@ -168,7 +168,7 @@
 
     const heading = terms.length
       ? `${scored.length} ${scored.length === 1 ? 'recipe' : 'recipes'} with ${esc(terms.join(', '))}`
-      : title;
+      : `${title} <span class="count">${scored.length}</span>`;
 
     main.innerHTML = `
       <section class="hero wrap">
@@ -181,7 +181,7 @@
               <input id="ing" autocomplete="off" placeholder="${terms.length ? 'add another…' : 'chicken, lemon, capers…'}" enterkeyhint="search">
             </div>
             ${suggestions.length ? `<div class="suggest"><span>Try:</span>${suggestions.map((s) => `<button type="button" class="chip" data-add="${esc(s)}">${esc(s)}</button>`).join('')}</div>` : ''}
-            <p class="match-line" aria-live="polite">${matchLine}</p>
+            ${matchLine ? `<p class="match-line" aria-live="polite">${matchLine}</p>` : ''}
           </div>
         </div>
         <div class="find-panel">
