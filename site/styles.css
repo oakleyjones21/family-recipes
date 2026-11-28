@@ -451,3 +451,9 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
   body.printing-list .gl-staples { display: none; }
   body.printing-list .gl-item input { width: 13px; height: 13px; }
 }
+
+.code-form { display: flex; flex-direction: column; gap: 14px; }
+.code-in { height: 52px; border: 1px solid var(--sand); border-radius: 999px; padding: 0 20px; font-size: 18px; background: var(--ground); outline: none; }
+.code-in:focus { border-color: var(--olive); box-shadow: 0 0 0 3px rgba(92, 90, 69, .15); }
+.code-form .btn { justify-content: center; }
+.plan-foot .link-btn { min-height: 0; padding: 0 2px; display: inline; }
