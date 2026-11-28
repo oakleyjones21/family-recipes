@@ -105,8 +105,6 @@
     });
     if (view === 'recipe') return renderRecipe(parts[1]);
     if (view === 'search') return renderSearch(params.get('q') || '');
-    const box = document.getElementById('q');
-    if (box && document.activeElement !== box) box.value = '';
     state.terms = (params.get('i') || '').split(',').map(norm).filter(Boolean);
     renderHome(view);
   }
@@ -135,9 +133,15 @@
 
     const full = terms.length ? scored.filter((x) => x.hits === terms.length).length : scored.length;
     const partial = terms.length ? scored.length - full : 0;
-    const matchText = !terms.length
-      ? (scored.length === 1 ? 'recipe in the book.' : 'recipes in the book.')
-      : (terms.length === 1 ? (full === 1 ? 'recipe uses it.' : 'recipes use it.') : (full === 1 ? 'recipe uses all of them.' : 'recipes use all of them.')) + (partial ? ` ${partial} more use${partial === 1 ? 's' : ''} some.` : '');
+    const plural = (n) => `${n} ${n === 1 ? 'recipe' : 'recipes'}`;
+    const matchLine = !terms.length
+      ? `<b>${plural(scored.length)}</b> in the book`
+      : `<b>${plural(full)}</b> ${full === 1 ? 'uses' : 'use'} ${terms.length === 1 ? 'it' : terms.length === 2 ? 'both' : 'all of them'}`
+        + (partial ? ` · ${partial} more ${partial === 1 ? 'uses' : 'use'} ${terms.length === 2 ? 'one' : 'some'}` : '');
+
+    const tryCounts = {};
+    pool.forEach((r) => [...(r.method || []), r.cuisine].filter(Boolean).forEach((k) => { tryCounts[k] = (tryCounts[k] || 0) + 1; }));
+    const tries = Object.entries(tryCounts).sort((a, b) => b[1] - a[1]).map(([k]) => k).slice(0, 4);
 
     const tagCounts = {};
     pool.forEach((r) => (r.keyIngredients || []).forEach((k) => { tagCounts[k] = (tagCounts[k] || 0) + 1; }));
@@ -159,26 +163,30 @@
               <input id="ing" autocomplete="off" placeholder="${terms.length ? 'add another…' : 'chicken, lemon, capers…'}" enterkeyhint="search">
             </div>
             ${suggestions.length ? `<div class="suggest"><span>Try:</span>${suggestions.map((s) => `<button type="button" class="chip" data-add="${esc(s)}">${esc(s)}</button>`).join('')}</div>` : ''}
+            <p class="match-line" aria-live="polite">${matchLine}</p>
           </div>
         </div>
-        <div class="matches" aria-live="polite">
-          <span class="eyebrow">${terms.length ? 'Matches' : 'Recipes'}</span>
-          <div class="num">${full}</div>
-          <p>${matchText}</p>
+        <div class="find-panel">
+          <h2 class="find-title">Know what<br><i>you want?</i></h2>
+          ${findForm('')}
+          ${tries.length ? `<div class="find-try"><span>Try searching</span><div>${tries.map((t) => `<a class="chip" href="#/search?q=${encodeURIComponent(t.toLowerCase())}">${esc(t)}</a>`).join('')}</div></div>` : ''}
         </div>
       </section>
       <section class="results wrap">
         <div class="results-bar">
           <h2>${heading}</h2>
+          <div class="filters">
           <button type="button" class="filter" data-meal="" aria-pressed="${!state.meal}">Everything</button>
           ${meals.map((m) => `<button type="button" class="filter" data-meal="${esc(m)}" aria-pressed="${state.meal === m}">${icon(categoryIcon({ mealType: m }))}${esc(m)}</button>`).join('')}
           <button type="button" class="filter" data-toggle="kid" aria-pressed="${state.kid}">${icon('kid-friendly')}Kid can make</button>
           <button type="button" class="filter" data-toggle="quick" aria-pressed="${state.quick}">${icon('quick')}Under 30 min</button>
+          </div>
         </div>
         ${scored.length ? `<div class="grid">${scored.map(({ r, hits }) => card(r, hits, terms.length)).join('')}</div>`
           : `<div class="empty">No recipes match yet. Try fewer ingredients or clear a filter.</div>`}
       </section>`;
 
+    wireFind(false);
     const input = document.getElementById('ing');
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ',') {
@@ -262,29 +270,18 @@
     return { tokens, results };
   }
 
-  function renderSearch(q) {
-    const box = document.getElementById('q');
-    if (box && document.activeElement !== box) box.value = q;
-    const { tokens, results } = search(q);
-    document.title = (q ? `"${q}" · ` : '') + 'Search · Our Family Table';
-    const heading = !tokens.length ? 'Search the recipe book'
-      : `${results.length} ${results.length === 1 ? 'recipe' : 'recipes'} for “${esc(q.trim())}”`;
-    main.innerHTML = `
-      <section class="search-head wrap">
-        <h1>${heading}</h1>
-        <p>${tokens.length ? 'Searching names, ingredients, steps and notes.' : 'Try a dish, an ingredient, a person (“Grandma”), or a word from the notes.'}</p>
-      </section>
-      <section class="results wrap" style="padding-top: 24px">
-        ${results.length ? `<div class="grid">${results.map(({ r, best }) => card(r, 0, 0, {
-          title: highlight(r.name, tokens),
-          snippet: best ? `<b>${esc(best.label)}:</b> ${highlight(clip(best.text, tokens), tokens)}` : '',
-        })).join('')}</div>`
-          : tokens.length ? `<div class="empty">Nothing matches “${esc(q.trim())}”. Check the spelling, try fewer words, or <a href="#/?i=${encodeURIComponent(tokens.join(','))}">search by ingredient</a> instead.</div>` : ''}
-      </section>`;
+  function findForm(value) {
+    return `<form class="find-form" role="search" id="find-form">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <label class="sr-only" for="q">Search recipes</label>
+            <input id="q" type="search" autocomplete="off" value="${esc(value)}" placeholder="Search recipes…" enterkeyhint="search">
+            <button type="submit">Search</button>
+          </form>`;
   }
 
-  function wireSearchBox() {
-    const form = document.getElementById('site-search');
+  // live = true on the search page: typing updates results in place without leaving the box.
+  function wireFind(live) {
+    const form = document.getElementById('find-form');
     const box = document.getElementById('q');
     if (!form || !box) return;
     let timer;
@@ -292,23 +289,58 @@
       clearTimeout(timer);
       timer = setTimeout(() => {
         const v = box.value.trim();
-        const onSearch = parseHash().parts[0] === 'search';
-        const target = v ? '#/search?q=' + encodeURIComponent(v) : '#/';
-        if (onSearch) location.replace(target);
+        const target = '#/search' + (v ? '?q=' + encodeURIComponent(v) : '');
+        if (live) location.replace(target);
         else if (v) location.hash = target;
       }, immediate ? 0 : 180);
     };
-    box.addEventListener('input', () => go(false));
+    if (live) box.addEventListener('input', () => go(false));
     form.addEventListener('submit', (e) => { e.preventDefault(); go(true); });
+  }
+
+  function renderSearch(q) {
+    const { tokens, results } = search(q);
+    document.title = (q ? `"${q}" · ` : '') + 'Search · Our Family Table';
+    if (!document.getElementById('search-page')) {
+      main.innerHTML = `
+        <section class="search-page wrap" id="search-page">
+          <div class="find-panel">
+            <h1 class="find-title">Know what <i>you want?</i></h1>
+            ${findForm(q)}
+            <p class="find-status" id="find-status" aria-live="polite"></p>
+          </div>
+        </section>
+        <section class="results wrap" id="search-results"></section>`;
+      wireFind(true);
+      const box = document.getElementById('q');
+      box.focus({ preventScroll: true });
+      box.setSelectionRange(box.value.length, box.value.length);
+    }
+    document.getElementById('find-status').innerHTML = !tokens.length
+      ? 'Search names, ingredients, steps and notes. Try a dish, an ingredient, a person (“Grandma”), or a word from the notes.'
+      : `<b>${results.length} ${results.length === 1 ? 'recipe' : 'recipes'}</b> for “${esc(q.trim())}”`;
+    document.getElementById('search-results').innerHTML = results.length
+      ? `<div class="grid">${results.map(({ r, best }) => card(r, 0, 0, {
+          title: highlight(r.name, tokens),
+          snippet: best ? `<b>${esc(best.label)}:</b> ${highlight(clip(best.text, tokens), tokens)}` : '',
+        })).join('')}</div>`
+      : tokens.length ? `<div class="empty">Nothing matches “${esc(q.trim())}”. Check the spelling, try fewer words, or <a href="#/?i=${encodeURIComponent(tokens.join(','))}">search by ingredient</a> instead.</div>` : '';
+  }
+
+  // "/" jumps to whichever search box is on the page.
+  function wireSlashKey() {
     document.addEventListener('keydown', (e) => {
       if (e.key !== '/' || cook || e.metaKey || e.ctrlKey) return;
       const tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+      const box = document.getElementById('q');
+      if (!box) return;
       e.preventDefault();
       box.focus();
       box.select();
     });
   }
+
 
   // ---------- recipe page ----------
   function renderRecipe(slug) {
@@ -413,7 +445,7 @@
       main.innerHTML = '<section class="wrap"><div class="empty">The recipe book couldn\'t load. Refresh to try again.</div></section>';
       return;
     }
-    wireSearchBox();
+    wireSlashKey();
     window.addEventListener('hashchange', () => { document.title = 'Our Family Table'; route(); });
     route();
   }

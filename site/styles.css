@@ -55,9 +55,25 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
 .pill-nav a[aria-current="page"] { background: var(--ink); color: var(--on-dark); }
 
 /* Hero */
-.hero { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 20px; padding-top: 24px; padding-bottom: 48px; }
+.hero { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding-top: 24px; padding-bottom: 48px; }
 .hero-main { background: var(--olive); color: var(--on-dark); border-radius: var(--radius-xl); padding: 48px; display: flex; flex-direction: column; gap: 24px; min-width: 0; }
-.hero h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(48px, 7vw, 76px); line-height: 0.98; letter-spacing: -0.01em; }
+.hero h1, .find-title { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(46px, 5.4vw, 64px); line-height: 0.98; letter-spacing: -0.01em; }
+.match-line { margin: 0; font-size: 14px; color: var(--olive); }
+.match-line b { color: var(--ink); }
+.find-panel { background: var(--surface); border: 1px solid var(--stone); border-radius: var(--radius-xl); padding: 48px; display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.find-form { display: flex; align-items: center; gap: 10px; background: var(--ground); border: 1px solid var(--sand); border-radius: 999px; padding: 0 6px 0 18px; height: 58px; }
+.find-form:focus-within { border-color: var(--olive); box-shadow: 0 0 0 3px rgba(92, 90, 69, .15); }
+.find-form svg { width: 20px; height: 20px; flex: none; color: var(--olive); }
+.find-form input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font-size: 16px; height: 46px; }
+.find-form button { border: 0; background: var(--ink); color: var(--on-dark); border-radius: 999px; height: 46px; padding: 0 20px; font-weight: 700; flex: none; }
+.find-form button:hover { background: var(--olive); }
+.find-try { display: flex; flex-direction: column; gap: 8px; }
+.find-try > span { font-size: 13px; color: var(--olive); }
+.find-try > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.find-try .chip { text-decoration: none; display: inline-flex; align-items: center; min-height: 36px; }
+.find-status { margin: 0; color: var(--olive); }
+.find-status b { color: var(--ink); }
+.search-page { padding-top: 24px; }
 .search-card { background: var(--surface); color: var(--ink); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .tag-input { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tag { display: inline-flex; align-items: center; gap: 8px; background: var(--ink); color: var(--on-dark); border-radius: 999px; padding: 6px 8px 6px 16px; font-size: 15px; }
@@ -73,6 +89,7 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
 /* Results */
 .results { padding-bottom: 72px; }
 .results-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 24px; font-size: 14px; font-weight: 500; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; }
 .results-bar h2 { margin: 0 12px 0 0; font-family: var(--serif); font-weight: 400; font-size: 40px; line-height: 1.1; }
 .filter { border: 1px solid var(--sand); background: var(--surface); border-radius: 999px; padding: 8px 16px; min-height: 40px; }
 .filter[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--on-dark); }
@@ -148,10 +165,13 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
   .wrap { padding-left: 18px; padding-right: 18px; }
   .site-search { order: 3; flex-basis: 100%; max-width: none; }
   .site-search kbd { display: none; }
+  .filters { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; padding-bottom: 2px; }
+  .filters .filter { flex: none; }
+  .results-bar h2 { font-size: 32px; }
   .pill-nav { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
   .pill-nav a { white-space: nowrap; padding: 9px 14px; }
-  .hero { grid-template-columns: minmax(0, 1fr); }
-  .hero-main { padding: 28px; }
+  .hero { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .hero-main, .find-panel { padding: 26px; gap: 18px; border-radius: 28px; }
   .matches { min-height: 0; flex-direction: row; align-items: center; padding: 24px; }
   .matches .num { font-size: 72px; }
   .recipe-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "side" "main" "notes" "actions"; padding: 24px; gap: 32px; }
