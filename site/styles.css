@@ -109,14 +109,13 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
 /* Recipe page */
 .recipe { padding-bottom: 72px; }
 .back { display: inline-flex; gap: 6px; align-items: center; margin: 8px 0 20px; font-weight: 500; text-decoration: none; }
-.recipe-card { background: var(--surface); border: 1px solid var(--stone); border-radius: 36px; padding: 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); grid-template-rows: auto auto 1fr; grid-template-areas: "side main" "side notes" "side actions"; gap: 24px 48px; }
+.recipe-card { background: var(--surface); border: 1px solid var(--stone); border-radius: 36px; padding: 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); grid-template-rows: auto 1fr; grid-template-areas: "side main" "side notes"; gap: 24px 48px; }
 .recipe-side { grid-area: side; }
 .recipe-main { grid-area: main; }
 .recipe-card > .notes { grid-area: notes; align-self: start; }
 .recipe-side .related { margin-top: 18px; }
 .related ul { margin: 4px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
 .inline-link, .related a { color: var(--olive); text-decoration: underline; text-underline-offset: 2px; }
-.recipe-card > .actions { grid-area: actions; align-self: start; margin-top: 0; }
 .recipe-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .recipe h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: clamp(44px, 6vw, 64px); line-height: 1; }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -144,7 +143,10 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
 .notes { background: var(--ground); border-radius: var(--radius-md); padding: 20px 24px; }
 .notes h2 { margin: 0 0 8px; }
 .notes ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions .btn { height: 42px; padding: 0 16px; font-size: 14px; }
+.actions .print-hint { flex-basis: 100%; margin: 0; }
+.action-bar { display: none; }
 .btn { border: 0; background: var(--ink); color: var(--on-dark); border-radius: 999px; padding: 0 22px; height: 48px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; }
 .btn:hover { color: var(--on-dark); background: var(--olive); }
 .btn-ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--sand); font-weight: 500; }
@@ -198,7 +200,10 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
   .hero-main, .find-panel { padding: 26px; gap: 18px; border-radius: 28px; }
   .matches { min-height: 0; flex-direction: row; align-items: center; padding: 24px; }
   .matches .num { font-size: 72px; }
-  .recipe-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "side" "main" "notes" "actions"; padding: 24px; gap: 32px; }
+  .recipe-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "side" "main" "notes"; padding: 24px; gap: 32px; }
+  .recipe { padding-bottom: 110px; }
+  .action-bar { display: flex; gap: 8px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; padding: 10px 18px calc(10px + env(safe-area-inset-bottom)); background: var(--ground); border-top: 1px solid var(--stone); }
+  .action-bar .btn { flex: 1 1 auto; justify-content: center; height: 46px; padding: 0 12px; font-size: 14px; }
 }
 
 /* Print: one clean 8.5 x 11 card */
@@ -208,7 +213,7 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
   @page { size: letter; margin: 0; }
   html, body { background: #fff; }
   body { font-size: 11pt; line-height: 1.35; padding: 0; }
-  .site-header, .site-footer, .back, .actions, .cook, .skip, .tags, .source, .related, .hero-photo, .print-hint { display: none !important; }
+  .site-header, .site-footer, .back, .actions, .action-bar, .cook, .skip, .tags, .source, .related, .hero-photo, .print-hint { display: none !important; }
   .wrap { padding: 0; max-width: none; }
   .recipe { padding: 0; }
   .recipe-card { display: block; border: 0; border-radius: 0; padding: 0.5in 0.6in; -webkit-box-decoration-break: clone; box-decoration-break: clone; }

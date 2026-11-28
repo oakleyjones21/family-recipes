@@ -379,6 +379,12 @@
             <span class="eyebrow">${esc([r.cuisine, mealsOf(r).join(' / ')].filter(Boolean).join(' · ') || 'Recipe')}</span>
             <h1>${esc(r.name)}</h1>
             <div class="stats">${stat('SERVES', r.servings, 'servings')}${stat('PREP', mins(r.prep), 'prep-time')}${stat('COOK', mins(r.cook), 'cook-time')}</div>
+            <div class="actions">
+              ${(r.steps || []).length ? `<button type="button" class="btn cook-btn">${icon('timer')}Start cooking mode</button>` : ''}
+              <button type="button" class="btn btn-ghost" data-act="add-recipe" data-slug="${esc(r.slug)}">${icon('meal-plan')}Add to meal plan</button>
+              <button type="button" class="btn btn-ghost" id="print-btn">${icon('print')}Print card</button>
+              <p class="print-hint" id="print-hint" hidden>No print menu? Tap your browser's <b>Share</b> button, then <b>Print</b>.</p>
+            </div>
             ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
             ${r.photo ? thumb(r, 'hero-photo photo-top') : ''}
             <h2>Ingredients</h2>
@@ -398,17 +404,14 @@
           ${(r.notes || []).length ? `<aside class="notes">
             ${(r.notes || []).length ? `<h2>Notes &amp; variations</h2><ul>${r.notes.map((x) => `<li>${rich(x)}</li>`).join('')}</ul>` : ''}
           </aside>` : ''}
-          <div class="actions">
-              ${(r.steps || []).length ? `<button type="button" class="btn" id="cook-btn">${icon('timer')}Start cooking mode</button>` : ''}
-              <button type="button" class="btn btn-ghost" data-act="add-recipe" data-slug="${esc(r.slug)}">${icon('meal-plan')}Add to meal plan</button>
-              <button type="button" class="btn btn-ghost" id="print-btn">${icon('print')}Print card</button>
-              <p class="print-hint" id="print-hint" hidden>No print menu? Tap your browser's <b>Share</b> button, then <b>Print</b>.</p>
-            </div>
         </article>
       </section>
+      <div class="action-bar">
+        ${(r.steps || []).length ? `<button type="button" class="btn cook-btn">${icon('timer')}Start cooking mode</button>` : ''}
+        <button type="button" class="btn btn-ghost" data-act="add-recipe" data-slug="${esc(r.slug)}">${icon('meal-plan')}Add to meal plan</button>
+      </div>
       <div class="cook" id="cook" hidden role="dialog" aria-modal="true" aria-label="Cooking mode"></div>`;
-    const btn = document.getElementById('cook-btn');
-    if (btn) btn.addEventListener('click', () => openCook(r));
+    document.querySelectorAll('.cook-btn').forEach((b) => b.addEventListener('click', () => openCook(r)));
     document.getElementById('print-btn').addEventListener('click', () => printCard(r));
     window.scrollTo(0, 0);
   }
@@ -517,7 +520,7 @@
     document.removeEventListener('keydown', cookKeys);
     const el = document.getElementById('cook');
     if (el) { el.hidden = true; el.innerHTML = ''; }
-    const btn = document.getElementById('cook-btn');
+    const btn = document.querySelector('.actions .cook-btn');
     if (btn) btn.focus();
   }
 
