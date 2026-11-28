@@ -145,7 +145,7 @@
 
     const tagCounts = {};
     pool.forEach((r) => (r.keyIngredients || []).forEach((k) => { tagCounts[k] = (tagCounts[k] || 0) + 1; }));
-    const suggestions = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).map(([k]) => k).filter((k) => !terms.includes(norm(k))).slice(0, 6);
+    const suggestions = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).map(([k]) => k).filter((k) => !terms.includes(norm(k))).slice(0, 4);
     const meals = [...new Set(pool.map((r) => r.mealType).filter(Boolean))].sort();
 
     const heading = terms.length
