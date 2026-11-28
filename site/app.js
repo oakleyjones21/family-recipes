@@ -387,6 +387,7 @@
               ${g.label ? `<p class="group-label">${esc(g.label)}</p>` : ''}
               <div class="checklist">${g.items.map((it) => `<label><input type="checkbox" id="i${n++}"><span>${rich(it)}</span></label>`).join('')}</div>
               </div>`).join('')}</div>
+            ${(r.related || []).length ? `<div class="related"><p class="group-label">Goes with</p><ul>${r.related.map((x) => `<li><a class="inline-link" href="#/recipe/${esc(x.slug)}">${esc(x.name)}</a></li>`).join('')}</ul></div>` : ''}
             ${r.source ? `<p class="source">From ${r.sourceLink ? `<a href="${esc(r.sourceLink)}" rel="noopener">${esc(r.source)}</a>` : esc(r.source)}</p>` : ''}
           </div>
           <div class="recipe-main">
@@ -394,9 +395,8 @@
             <h2>Instructions</h2>
             ${(r.steps || []).map((s, i) => `<div class="step"><span class="step-num">${i + 1}</span><p>${rich(s)}</p></div>`).join('')}
           </div>
-          ${(r.notes || []).length || (r.related || []).length ? `<aside class="notes">
+          ${(r.notes || []).length ? `<aside class="notes">
             ${(r.notes || []).length ? `<h2>Notes &amp; variations</h2><ul>${r.notes.map((x) => `<li>${rich(x)}</li>`).join('')}</ul>` : ''}
-            ${(r.related || []).length ? `<div class="related"><h2>Related recipes</h2><ul>${r.related.map((x) => `<li><a class="inline-link" href="#/recipe/${esc(x.slug)}">${esc(x.name)}</a></li>`).join('')}</ul></div>` : ''}
           </aside>` : ''}
           <div class="actions">
               ${(r.steps || []).length ? `<button type="button" class="btn" id="cook-btn">${icon('timer')}Start cooking mode</button>` : ''}
