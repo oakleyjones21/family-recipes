@@ -103,7 +103,11 @@
       const on = a.dataset.nav === (view === 'recipe' ? '' : view);
       on ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current');
     });
-    if (view === 'recipe') return renderRecipe(parts[1]);
+    if (view === 'recipe') {
+      renderRecipe(parts[1]);
+      if (params.get('print') === '1') setTimeout(() => { try { window.print(); } catch (_) {} }, 700);
+      return;
+    }
     if (view === 'search') return renderSearch(params.get('q') || '');
     state.terms = (params.get('i') || '').split(',').map(norm).filter(Boolean);
     renderHome(view);
@@ -376,14 +380,33 @@
           </aside>` : ''}
           <div class="actions">
               ${(r.steps || []).length ? `<button type="button" class="btn" id="cook-btn">${icon('timer')}Start cooking mode</button>` : ''}
-              <button type="button" class="btn btn-ghost" onclick="window.print()">${icon('print')}Print card</button>
+              <button type="button" class="btn btn-ghost" id="print-btn">${icon('print')}Print card</button>
+              <p class="print-hint" id="print-hint" hidden>No print menu? Tap your browser's <b>Share</b> button, then <b>Print</b>.</p>
             </div>
         </article>
       </section>
       <div class="cook" id="cook" hidden role="dialog" aria-modal="true" aria-label="Cooking mode"></div>`;
     const btn = document.getElementById('cook-btn');
     if (btn) btn.addEventListener('click', () => openCook(r));
+    document.getElementById('print-btn').addEventListener('click', () => printCard(r));
     window.scrollTo(0, 0);
+  }
+
+  // ---------- printing ----------
+  // Saved-to-home-screen apps on iPhone can't open the print menu, so hand the page to the browser instead.
+  const isStandalone = () => window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  const isTouch = () => window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+  function printCard(r) {
+    if (isStandalone()) {
+      window.open(location.href.split('#')[0] + '#/recipe/' + encodeURIComponent(r.slug) + '?print=1', '_blank');
+      return;
+    }
+    try { if (typeof window.print === 'function') window.print(); } catch (_) { /* fall through to the hint */ }
+    if (isTouch() || typeof window.print !== 'function') {
+      const hint = document.getElementById('print-hint');
+      if (hint) hint.hidden = false;
+    }
   }
 
   // ---------- cooking mode ----------
