@@ -153,7 +153,19 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
 .cook-progress { display: flex; gap: 6px; flex: 1; }
 .cook-progress span { flex: 1; height: 6px; border-radius: 3px; background: var(--olive); }
 .cook-progress span.done { background: var(--sand); }
-.cook-step { flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 960px; margin: 0 auto; gap: 20px; }
+.cook-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 40px; max-width: 1200px; width: 100%; margin: 0 auto; }
+.cook-step { flex: 2 1 480px; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 20px; }
+.cook-ings { flex: 1 1 280px; min-width: 0; max-width: 420px; background: rgba(247, 243, 236, .08); border: 1px solid var(--olive); border-radius: var(--radius-lg); padding: 24px 28px; }
+.cook-ings h2 { margin: 0 0 12px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sand); }
+.cook-ings h3 { margin: 14px 0 6px; font-family: var(--serif); font-style: italic; font-weight: 400; font-size: 20px; color: var(--sand); }
+.cook-ings ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 20px; line-height: 1.35; }
+.cook-top .btn { flex: none; }
+@media (max-width: 600px) {
+  .cook { padding: 20px; gap: 18px; }
+  .cook-top { flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+  .cook-progress { flex-basis: 100%; order: -1; }
+  .cook-ings ul { font-size: 18px; }
+}
 .cook-step p { margin: 0; font-family: var(--serif); font-size: clamp(32px, 4.5vw, 56px); line-height: 1.15; }
 .cook-nav { display: flex; justify-content: space-between; gap: 12px; max-width: 960px; width: 100%; margin: 0 auto; }
 .cook .btn { background: var(--sand); color: var(--ink); height: 56px; }

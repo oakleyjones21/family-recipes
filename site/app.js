@@ -393,17 +393,57 @@
     document.addEventListener('keydown', cookKeys);
     drawCook();
   }
+  // ---------- which ingredients each step uses ----------
+  const UNITS = new Set('tsp teaspoon teaspoons tbsp tablespoon tablespoons tbs cup cups c oz ounce ounces lb lbs pound pounds g gram grams kg ml l liter liters quart quarts qt pint pints pinch pinches dash dashes can cans package packages pkg pkgs stick sticks slice slices sprig sprigs bunch bunches handful handfuls piece pieces inch inches jar jars bag bags box boxes container containers envelope envelopes'.split(' '));
+  const DESCRIPTORS = new Set('large small medium big fresh freshly chopped minced diced sliced divided boneless skinless drained rinsed softened melted room temperature packed finely roughly coarsely thinly thick thin grated shredded peeled cut into about plus more for to taste optional and of the a an cold warm hot cubed beaten lightly extra virgin whole halved trimmed crushed heaping level scant generous good quality store bought homemade or each serving garnish needed'.split(' '));
+  const CONTAINERS = new Set(['clove', 'head', 'stalk', 'ear', 'leaf', 'leave', 'fillet', 'filet']);
+  const SYNONYMS = { spaghetti: 'pasta', penne: 'pasta', linguine: 'pasta', fettuccine: 'pasta', macaroni: 'pasta', rigatoni: 'pasta', orzo: 'pasta', noodle: 'pasta', hair: 'pasta', scallion: 'onion', shallot: 'onion' };
+
+  const GENERIC_HEADS = new Set(['sauce', 'juice', 'zest', 'oil', 'powder', 'paste', 'extract', 'seed', 'flake', 'chip', 'mix', 'seasoning']);
+  const skipWord = (w) => w.length < 3 || UNITS.has(w) || DESCRIPTORS.has(w) || CONTAINERS.has(w)
+    || UNITS.has(singular(w)) || DESCRIPTORS.has(singular(w)) || CONTAINERS.has(singular(w)) || CONTAINERS.has(w.replace(/s$/, ''));
+
+  function keysFrom(text) {
+    const words = text.split(/[^a-z]+/).filter(Boolean).filter((w) => !skipWord(w));
+    if (!words.length) return [];
+    const head = singular(words[words.length - 1]);
+    const keys = [head];
+    if (GENERIC_HEADS.has(head) && words.length > 1) keys.push(singular(words[0]));
+    return keys;
+  }
+
+  function ingredientKeys(line) {
+    const clean = line.toLowerCase().replace(/\([^)]*\)/g, ' ');
+    return clean.split(/\bor\b/).flatMap((alt) => {
+      const beforeComma = keysFrom(alt.split(',')[0]);
+      return beforeComma.length ? beforeComma : keysFrom(alt);
+    }).flatMap((k) => (SYNONYMS[k] ? [k, SYNONYMS[k]] : [k]));
+  }
+
+  function stepIngredients(r, stepText) {
+    const text = stepText.toLowerCase();
+    const items = (r.ingredientGroups || []).flatMap((g) => g.items);
+    return items.filter((line) => ingredientKeys(line).some((k) => new RegExp('\\b' + reEsc(k) + '(e?s|ed|ing)?\\b').test(text)));
+  }
+
   function drawCook() {
     const el = document.getElementById('cook');
     if (!el || !cook) return;
     const steps = cook.r.steps, i = cook.i, last = i === steps.length - 1;
+    const used = stepIngredients(cook.r, steps[i]);
     el.hidden = false;
     el.innerHTML = `
       <div class="cook-top">
         <div class="cook-progress" aria-hidden="true">${steps.map((_, k) => `<span class="${k <= i ? 'done' : ''}"></span>`).join('')}</div>
+        <button type="button" class="btn btn-ghost" data-c="all" aria-pressed="${!!cook.all}">${cook.all ? 'This step only' : 'All ingredients'}</button>
         <button type="button" class="btn btn-ghost" data-c="close">Close</button>
       </div>
-      <div class="cook-step"><span class="eyebrow" style="color:var(--sand)">${esc(cook.r.name)} · Step ${i + 1} of ${steps.length}</span><p>${rich(steps[i])}</p></div>
+      <div class="cook-body">
+        <div class="cook-step"><span class="eyebrow" style="color:var(--sand)">${esc(cook.r.name)} · Step ${i + 1} of ${steps.length}</span><p>${rich(steps[i])}</p></div>
+        ${cook.all
+          ? `<aside class="cook-ings" aria-label="All ingredients"><h2>All ingredients</h2>${(cook.r.ingredientGroups || []).map((g) => `${g.label ? `<h3>${esc(g.label)}</h3>` : ''}<ul>${g.items.map((it) => `<li>${esc(it)}</li>`).join('')}</ul>`).join('')}</aside>`
+          : used.length ? `<aside class="cook-ings" aria-label="Ingredients for this step"><h2>For this step</h2><ul>${used.map((it) => `<li>${esc(it)}</li>`).join('')}</ul></aside>` : ''}
+      </div>
       <div class="cook-nav">
         <button type="button" class="btn btn-ghost" data-c="prev" ${i === 0 ? 'disabled' : ''}>← Back</button>
         <button type="button" class="btn" data-c="${last ? 'close' : 'next'}">${last ? 'Done' : 'Next step →'}</button>
@@ -416,6 +456,7 @@
     if (a === 'next' && cook.i < cook.r.steps.length - 1) cook.i++;
     else if (a === 'prev' && cook.i > 0) cook.i--;
     else if (a === 'close') return closeCook();
+    else if (a === 'all') cook.all = !cook.all;
     drawCook();
   }
   function cookKeys(e) {
