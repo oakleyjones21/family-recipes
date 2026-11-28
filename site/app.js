@@ -61,7 +61,14 @@
       "kid-friendly": "M12 3.5L14.6 8.8L20.4 9.6L16.2 13.7L17.2 19.5L12 16.8L6.8 19.5L7.8 13.7L3.6 9.6L9.4 8.8Z",
       "timer": "M4.5 13.5a7.5 7.5 0 1 0 15.0 0a7.5 7.5 0 1 0 -15.0 0M12 13.5V10M10 3H14M12 3V6M18.5 6.5L19.8 5.2",
       "ingredients": "M3 10H21L19 20H5ZM7 10C7 6 9.5 4 12 4C14.5 4 17 6 17 10M9 13V17M12 13V17M15 13V17",
-      "notes": "M4 20L5 15.5L15.5 5C16.3 4.2 17.7 4.2 18.5 5L19 5.5C19.8 6.3 19.8 7.7 19 8.5L8.5 19ZM14 6.5L17.5 10"
+      "notes": "M4 20L5 15.5L15.5 5C16.3 4.2 17.7 4.2 18.5 5L19 5.5C19.8 6.3 19.8 7.7 19 8.5L8.5 19ZM14 6.5L17.5 10",
+      "meal-plan": "M4 7C4 5.9 4.9 5 6 5H18C19.1 5 20 5.9 20 7V18C20 19.1 19.1 20 18 20H6C4.9 20 4 19.1 4 18ZM4 10H20M8 3V7M16 3V7M9 15L11 17L15 13",
+      "shopping-list": "M3 4H5.5L7.5 15H18L20 7.5H6.2M7.6 19a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0 -2.8 0M15.1 19a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0 -2.8 0",
+      "dice": "M4 7C4 5.3 5.3 4 7 4H17C18.7 4 20 5.3 20 7V17C20 18.7 18.7 20 17 20H7C5.3 20 4 18.7 4 17ZM8.5 8.5h.01M15.5 15.5h.01M12 12h.01M15.5 8.5h.01M8.5 15.5h.01",
+      "shuffle": "M3 7H6.5C8.5 7 9.7 8 10.8 9.7L13.2 14.3C14.3 16 15.5 17 17.5 17H21M3 17H6.5C7.9 17 8.9 16.5 9.7 15.6M14.3 8.4C15.1 7.5 16.1 7 17.5 7H21M18 4L21 7L18 10M18 14L21 17L18 20",
+      "close": "M6 6L18 18M18 6L6 18",
+      "chev-l": "M15 5L8 12L15 19",
+      "chev-r": "M9 5L16 12L9 19"
   };
   const icon = (name, cls = 'ico') => ICON_PATHS[name]
     ? `<svg class="${cls}" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON_PATHS[name]}"/></svg>`
@@ -97,11 +104,16 @@
 
   function route() {
     closeCook();
+    document.querySelectorAll('dialog.chooser').forEach((d) => d.close());
+    const t = document.getElementById('toast');
+    if (t && parseHash().parts[0] !== 'plan') t.hidden = true;
     const { parts, params } = parseHash();
     const view = parts[0] || 'home';
     document.querySelectorAll('[data-nav]').forEach((a) => {
       const on = a.dataset.nav === (view === 'recipe' ? '' : view);
       on ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current');
+      // On phones the menu scrolls sideways; keep the current page in view.
+      if (on && a.parentElement.scrollWidth > a.parentElement.clientWidth) a.parentElement.scrollLeft = a.offsetLeft - 8;
     });
     if (view === 'recipe') {
       renderRecipe(parts[1]);
@@ -109,6 +121,8 @@
       return;
     }
     if (view === 'search') return renderSearch(params.get('q') || '');
+    if (view === 'plan') return renderPlan(parts, params);
+    if (view === 'surprise') return renderSurprise();
     state.terms = (params.get('i') || '').split(',').map(norm).filter(Boolean);
     renderHome(view);
   }
@@ -383,6 +397,7 @@
           </aside>` : ''}
           <div class="actions">
               ${(r.steps || []).length ? `<button type="button" class="btn" id="cook-btn">${icon('timer')}Start cooking mode</button>` : ''}
+              <button type="button" class="btn btn-ghost" data-act="add-recipe" data-slug="${esc(r.slug)}">${icon('meal-plan')}Add to meal plan</button>
               <button type="button" class="btn btn-ghost" id="print-btn">${icon('print')}Print card</button>
               <p class="print-hint" id="print-hint" hidden>No print menu? Tap your browser's <b>Share</b> button, then <b>Print</b>.</p>
             </div>
@@ -503,6 +518,549 @@
     if (btn) btn.focus();
   }
 
+  // ---------- meal plan ----------
+  // The plan is a map of date ("2026-12-01") → { slug } or { note: "Leftovers" }.
+  // planStore is the only place that reads or writes it, so it can later talk to Notion instead of this browser.
+  const PLAN_KEY = 'oft-plan-v1';
+  const GROCERY_KEY = 'oft-grocery-v1';
+  const browserStore = (() => {
+    const mem = {};
+    let ok = false;
+    try { localStorage.setItem('oft-test', '1'); localStorage.removeItem('oft-test'); ok = true; } catch (_) { /* private mode */ }
+    return {
+      ok,
+      get(k, fallback) {
+        if (!ok) return mem[k] ?? fallback;
+        try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (_) { return fallback; }
+      },
+      set(k, v) {
+        if (!ok) { mem[k] = v; return; }
+        try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { mem[k] = v; }
+      },
+    };
+  })();
+  const planStore = {
+    all() { return browserStore.get(PLAN_KEY, {}); },
+    get(date) { return this.all()[date] || null; },
+    set(date, entry) {
+      const p = this.all();
+      if (entry) p[date] = entry; else delete p[date];
+      browserStore.set(PLAN_KEY, p);
+    },
+  };
+
+  const NOTES = ['Leftovers', 'Eating out'];
+  const pad = (n) => String(n).padStart(2, '0');
+  const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const parseYmd = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+  const addDays = (d, n) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; };
+  const todayD = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };
+  const mondayOf = (d) => addDays(d, -((d.getDay() + 6) % 7));
+  const fmt = (d, o) => d.toLocaleDateString(undefined, o);
+  const dayName = (d) => fmt(d, { weekday: 'long' });
+  const shortDate = (d) => fmt(d, { weekday: 'short', month: 'short', day: 'numeric' });
+  const bySlug = (slug) => state.recipes.find((r) => r.slug === slug && r.status !== 'Retired');
+
+  // Surprise-me filters. Dinner by default, since that's the nightly question.
+  const sp = { meal: 'Dinner', cuisine: null, kid: false, quick: false, pick: null };
+  function surprisePool() {
+    return visible().filter((r) => (!sp.meal || r.mealType === sp.meal) && (!sp.cuisine || r.cuisine === sp.cuisine)
+      && (!sp.kid || (r.occasion || []).includes('Kid Can Make')) && (!sp.quick || isQuick(r)));
+  }
+  function randomFrom(pool, avoid = []) {
+    const fresh = pool.filter((r) => !avoid.includes(r.slug));
+    const from = fresh.length ? fresh : pool;
+    return from.length ? from[Math.floor(Math.random() * from.length)] : null;
+  }
+  function dinnerPool() {
+    const d = visible().filter((r) => r.mealType === 'Dinner');
+    return d.length ? d : visible();
+  }
+  function shuffleSurprise() {
+    const r = randomFrom(surprisePool(), sp.pick ? [sp.pick] : []);
+    sp.pick = r ? r.slug : null;
+  }
+  // Slugs planned within 3 days of a date, so random picks don't repeat a dinner back to back.
+  function nearbySlugs(date, plan) {
+    const d = parseYmd(date), out = [];
+    for (let k = -3; k <= 3; k++) { const e = plan[ymd(addDays(d, k))]; if (e && e.slug) out.push(e.slug); }
+    return out;
+  }
+  function fillDays(dates) {
+    const plan = planStore.all();
+    let n = 0;
+    dates.forEach((date) => {
+      if (plan[date]) return;
+      const r = randomFrom(dinnerPool(), nearbySlugs(date, plan));
+      if (r) { plan[date] = { slug: r.slug }; n++; }
+    });
+    browserStore.set(PLAN_KEY, plan);
+    return n;
+  }
+
+  // ---------- toast ----------
+  let toastTimer;
+  function toast(html, undo) {
+    let el = document.getElementById('toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'toast'; el.className = 'toast'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+      document.body.appendChild(el);
+    }
+    el.innerHTML = `<span>${html}</span>${undo ? '<button type="button" class="toast-undo">Undo</button>' : ''}`;
+    el.hidden = false;
+    if (undo) el.querySelector('.toast-undo').addEventListener('click', () => { undo(); el.hidden = true; });
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 6000);
+  }
+
+  // Set one night and offer to undo it.
+  function setNight(date, entry, label) {
+    const before = planStore.get(date);
+    planStore.set(date, entry);
+    rerenderPlan();
+    const d = parseYmd(date);
+    toast(label || `Planned for ${esc(shortDate(d))}`, () => { planStore.set(date, before); rerenderPlan(); });
+  }
+
+  function rerenderPlan() {
+    const view = parseHash().parts[0];
+    if (view !== 'plan' && view !== 'surprise') return;
+    const y = window.scrollY;
+    const focusId = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.focus : null;
+    route();
+    window.scrollTo(0, y);
+    if (focusId) { const el = main.querySelector(`[data-focus="${focusId}"]`); if (el) el.focus({ preventScroll: true }); }
+  }
+
+  // ---------- recipe chooser (dialog) ----------
+  function openChooser(date) {
+    const d = parseYmd(date);
+    let dlg = document.getElementById('chooser');
+    if (dlg) dlg.remove();
+    dlg = document.createElement('dialog');
+    dlg.id = 'chooser';
+    dlg.className = 'chooser';
+    dlg.setAttribute('aria-labelledby', 'chooser-title');
+    dlg.innerHTML = `
+      <div class="chooser-head">
+        <div><span class="eyebrow">${esc(dayName(d))}</span><h2 id="chooser-title">${esc(fmt(d, { month: 'long', day: 'numeric' }))}</h2></div>
+        <button type="button" class="icon-btn" data-close aria-label="Close">${icon('close')}</button>
+      </div>
+      <label class="sr-only" for="chooser-q">Find a recipe</label>
+      <div class="find-form chooser-search">${'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'}<input id="chooser-q" type="search" autocomplete="off" placeholder="Find a recipe…"></div>
+      <div class="chooser-quick">
+        <button type="button" class="chip" data-pick-random>${icon('dice')}Pick for me</button>
+        ${NOTES.map((n) => `<button type="button" class="chip" data-pick-note="${esc(n)}">${esc(n)}</button>`).join('')}
+      </div>
+      <ul class="chooser-list" id="chooser-list"></ul>`;
+    document.body.appendChild(dlg);
+    const list = dlg.querySelector('#chooser-list');
+    const q = dlg.querySelector('#chooser-q');
+    const draw = () => {
+      const v = q.value.trim();
+      const rs = v ? search(v).results.map((x) => x.r)
+        : visible().slice().sort((a, b) => (b.mealType === 'Dinner') - (a.mealType === 'Dinner') || a.name.localeCompare(b.name));
+      list.innerHTML = rs.length
+        ? rs.map((r) => `<li><button type="button" class="chooser-item" data-pick="${esc(r.slug)}">${thumb(r, 'chooser-thumb')}<span><b>${esc(r.name)}</b><small>${esc([r.mealType, timeLabel(r)].filter(Boolean).join(' · '))}</small></span></button></li>`).join('')
+        : `<li class="chooser-none">No recipes match “${esc(v)}”.</li>`;
+    };
+    draw();
+    q.addEventListener('input', draw);
+    const done = (entry, label) => { dlg.close(); setNight(date, entry, label); };
+    dlg.addEventListener('click', (e) => {
+      const t = e.target.closest('button');
+      if (e.target === dlg || (t && t.hasAttribute('data-close'))) return dlg.close();
+      if (!t) return;
+      if (t.dataset.pick) done({ slug: t.dataset.pick });
+      else if (t.dataset.pickNote) done({ note: t.dataset.pickNote });
+      else if (t.hasAttribute('data-pick-random')) {
+        const r = randomFrom(dinnerPool(), nearbySlugs(date, planStore.all()));
+        if (r) done({ slug: r.slug }, `${esc(r.name)} for ${esc(shortDate(d))}`);
+      }
+    });
+    dlg.addEventListener('close', () => dlg.remove());
+    dlg.showModal();
+    q.focus();
+  }
+
+  // ---------- add-to-plan (dialog, from a recipe page or Surprise me) ----------
+  function openNightPicker(slug) {
+    const r = bySlug(slug);
+    if (!r) return;
+    let dlg = document.getElementById('nights');
+    if (dlg) dlg.remove();
+    dlg = document.createElement('dialog');
+    dlg.id = 'nights';
+    dlg.className = 'chooser';
+    dlg.setAttribute('aria-labelledby', 'nights-title');
+    const plan = planStore.all();
+    const start = todayD();
+    const days = Array.from({ length: 14 }, (_, k) => addDays(start, k));
+    dlg.innerHTML = `
+      <div class="chooser-head">
+        <div><span class="eyebrow">Add to meal plan</span><h2 id="nights-title">${esc(r.name)}</h2></div>
+        <button type="button" class="icon-btn" data-close aria-label="Close">${icon('close')}</button>
+      </div>
+      <p class="chooser-hint">Pick a night. A night that's already planned gets replaced.</p>
+      <div class="night-grid">${days.map((d) => {
+        const e = plan[ymd(d)];
+        const what = e ? (e.slug ? (bySlug(e.slug) || {}).name || 'Planned' : e.note) : 'Open';
+        return `<button type="button" class="night ${e ? 'is-set' : ''}" data-night="${ymd(d)}"><b>${esc(fmt(d, { weekday: 'short' }))} ${d.getDate()}</b><small>${esc(what)}</small></button>`;
+      }).join('')}</div>`;
+    document.body.appendChild(dlg);
+    dlg.addEventListener('click', (e) => {
+      const t = e.target.closest('button');
+      if (e.target === dlg || (t && t.hasAttribute('data-close'))) return dlg.close();
+      if (t && t.dataset.night) {
+        dlg.close();
+        const date = t.dataset.night;
+        const before = planStore.get(date);
+        planStore.set(date, { slug });
+        rerenderPlan();
+        toast(`${esc(r.name)} is on for ${esc(shortDate(parseYmd(date)))} · <a href="#/plan?w=${ymd(mondayOf(parseYmd(date)))}">See the week</a>`,
+          () => { planStore.set(date, before); rerenderPlan(); });
+      }
+    });
+    dlg.addEventListener('close', () => dlg.remove());
+    dlg.showModal();
+    const first = dlg.querySelector('.night:not(.is-set)') || dlg.querySelector('.night');
+    if (first) first.focus();
+  }
+
+  // ---------- Surprise me panel ----------
+  function surprisePanel(big) {
+    const all = visible();
+    const meals = [...new Set(all.map((r) => r.mealType).filter(Boolean))].sort();
+    const cuisines = [...new Set(all.map((r) => r.cuisine).filter(Boolean))].sort();
+    if (sp.pick && !surprisePool().some((r) => r.slug === sp.pick)) sp.pick = null;
+    if (!sp.pick) shuffleSurprise();
+    const r = sp.pick ? bySlug(sp.pick) : null;
+    const chip = (attr, val, on, label) => `<button type="button" class="filter" data-sp="${attr}" data-val="${esc(val)}" aria-pressed="${on}">${label}</button>`;
+    const meta = r ? [timeLabel(r), r.servings ? 'serves ' + r.servings : '', r.cuisine].filter(Boolean).join(' · ') : '';
+    const Tag = big ? 'h1' : 'h2';
+    return `<div class="surprise ${big ? 'surprise-big' : ''}" id="surprise">
+      <${Tag} class="surprise-title">Stuck? <i>Let the table pick.</i></${Tag}>
+      <div class="sp-filters" role="group" aria-label="Kind of meal">
+        ${chip('meal', '', !sp.meal, 'Any meal')}
+        ${meals.map((m) => chip('meal', m, sp.meal === m, esc(m))).join('')}
+        ${chip('quick', '1', sp.quick, icon('quick') + 'Under 30 min')}
+        ${chip('kid', '1', sp.kid, icon('kid-friendly') + 'Kid can make')}
+      </div>
+      ${cuisines.length > 1 ? `<div class="sp-filters" role="group" aria-label="Cuisine">
+        ${chip('cuisine', '', !sp.cuisine, 'Any cuisine')}
+        ${cuisines.map((c) => chip('cuisine', c, sp.cuisine === c, esc(c))).join('')}
+      </div>` : ''}
+      ${r ? `<div class="sp-pick" aria-live="polite">
+          <a href="#/recipe/${esc(r.slug)}" class="sp-photo" tabindex="-1" aria-hidden="true">${thumb(r, 'sp-thumb')}</a>
+          <div class="sp-text">
+            <span class="eyebrow">${sp.meal === 'Dinner' ? 'Tonight, how about…' : 'How about…'}</span>
+            <a class="sp-name" href="#/recipe/${esc(r.slug)}">${esc(r.name)}</a>
+            <span class="sp-meta">${esc(meta)}</span>
+          </div>
+        </div>
+        <div class="sp-actions">
+          <button type="button" class="btn" data-act="shuffle" data-focus="shuffle">${icon('shuffle')}Shuffle again</button>
+          <a class="btn btn-ghost" href="#/recipe/${esc(r.slug)}">Let's make it</a>
+          <button type="button" class="btn btn-ghost" data-act="add-pick">${icon('meal-plan')}Add to plan</button>
+        </div>`
+        : `<div class="empty">Nothing matches those filters. Try turning one off.</div>`}
+    </div>`;
+  }
+
+  function renderSurprise() {
+    document.title = 'Surprise me · Our Family Table';
+    main.innerHTML = `<section class="wrap surprise-page">${surprisePanel(true)}</section>`;
+  }
+
+  // ---------- week view ----------
+  function viewToggle(active, weekStart, month) {
+    return `<div class="view-toggle" role="group" aria-label="Plan view">
+      <a href="#/plan?w=${ymd(weekStart)}" ${active === 'week' ? 'aria-current="page"' : ''}>Week</a>
+      <a href="#/plan/month?m=${month}" ${active === 'month' ? 'aria-current="page"' : ''}>Month</a>
+    </div>`;
+  }
+
+  function dayCard(d, entry, isToday) {
+    const date = ymd(d);
+    const label = dayName(d);
+    const head = `<div class="day-head"><span class="eyebrow">${esc(fmt(d, { weekday: 'short' }))}</span><span class="day-num">${d.getDate()}</span></div>`;
+    let body;
+    if (entry && entry.slug) {
+      const r = bySlug(entry.slug);
+      body = r
+        ? `<a class="day-meal" href="#/recipe/${esc(r.slug)}">${thumb(r, 'day-thumb')}<span class="day-name">${esc(r.name)}</span><span class="day-meta">${esc(timeLabel(r))}</span></a>`
+        : `<div class="day-note"><i>That recipe left the book</i></div>`;
+    } else if (entry && entry.note) {
+      body = `<div class="day-note"><i>${esc(entry.note)}</i><small>${entry.note === 'Leftovers' ? 'Fridge clean-out' : 'Night off'}</small></div>`;
+    } else {
+      body = `<div class="day-empty">
+        <button type="button" class="btn btn-ghost" data-act="choose" data-date="${date}" data-focus="choose-${date}">+ Add</button>
+        <button type="button" class="link-btn" data-act="roll" data-date="${date}" data-focus="roll-${date}">${icon('dice')}Pick for me</button>
+      </div>`;
+    }
+    const tools = entry ? `<div class="day-tools">
+        ${entry.slug ? `<button type="button" class="icon-btn" data-act="roll" data-date="${date}" data-focus="roll-${date}" aria-label="Pick a different dinner for ${esc(label)}" title="Pick a different one">${icon('shuffle')}</button>` : ''}
+        <button type="button" class="icon-btn" data-act="choose" data-date="${date}" data-focus="choose-${date}" aria-label="Change ${esc(label)}" title="Change">${icon('notes')}</button>
+        <button type="button" class="icon-btn" data-act="clear" data-date="${date}" aria-label="Clear ${esc(label)}" title="Clear">${icon('close')}</button>
+      </div>` : '';
+    return `<div class="day ${isToday ? 'is-today' : ''} ${entry ? '' : 'is-open'}">${head}${body}${tools}</div>`;
+  }
+
+  // Pantry staples that most kitchens already have; they're tucked under "You probably have these".
+  const STAPLE = /\b(salt|black pepper|ground pepper|pepper to taste|olive oil|vegetable oil|canola oil|cooking spray|oil|water|flour|sugar|brown sugar|powdered sugar|baking soda|baking powder|vanilla|cinnamon|nutmeg|paprika|oregano|basil|thyme|cumin|chili powder|garlic powder|onion powder|italian seasoning|red pepper flakes|bay leaf|bay leaves|broth|stock|bouillon|soy sauce|vinegar|ketchup|mustard|mayonnaise|honey|cornstarch)\b/i;
+  function groceryFor(dates, plan) {
+    const seen = new Map();
+    dates.forEach((date) => {
+      const e = plan[date];
+      const r = e && e.slug ? bySlug(e.slug) : null;
+      if (!r) return;
+      if (!seen.has(r.slug)) seen.set(r.slug, { r, nights: [] });
+      seen.get(r.slug).nights.push(parseYmd(date));
+    });
+    const groups = [], staples = [];
+    seen.forEach(({ r, nights }) => {
+      const items = [];
+      (r.ingredientGroups || []).forEach((g) => g.items.forEach((line, i) => {
+        const text = unlink(line);
+        const key = r.slug + '|' + (g.label || '') + '|' + i;
+        (STAPLE.test(text) && !/\b(bell|jalape|chipotle|poblano)/i.test(text) ? staples : items).push({ key, text, from: r.name });
+      }));
+      groups.push({ r, nights, items });
+    });
+    return { groups, staples };
+  }
+
+  function groceryHtml(weekKey, dates, plan) {
+    const { groups, staples } = groceryFor(dates, plan);
+    const checked = browserStore.get(GROCERY_KEY, {})[weekKey] || {};
+    const box = (it, showFrom) => `<label class="gl-item"><input type="checkbox" data-gl="${esc(it.key)}" ${checked[it.key] ? 'checked' : ''}><span>${esc(it.text)}${showFrom ? ` <small>· ${esc(it.from)}</small>` : ''}</span></label>`;
+    return `<section class="wrap grocery" id="groceries" data-week="${weekKey}">
+      <div class="grocery-card">
+        <div class="grocery-top">
+          <div><span class="eyebrow">Built from this week's plan</span><h2>Grocery <i>list</i></h2></div>
+          ${groups.length ? `<div class="grocery-actions">
+            <button type="button" class="btn" data-act="print-list">${icon('print')}Print list</button>
+            <button type="button" class="btn btn-ghost" data-act="copy-list">${icon('shopping-list')}Copy list</button>
+            <button type="button" class="link-btn" data-act="uncheck-list">Uncheck all</button>
+          </div>` : ''}
+        </div>
+        ${groups.length ? `<div class="gl-groups">${groups.map((g) => `<div class="gl-group">
+            <h3>${esc(g.r.name)} <small>${g.nights.map((d) => esc(fmt(d, { weekday: 'short' }))).join(', ')}</small></h3>
+            ${g.items.length ? g.items.map((it) => box(it)).join('') : '<p class="gl-none">Nothing extra to buy.</p>'}
+          </div>`).join('')}</div>
+          ${staples.length ? `<details class="gl-staples"><summary>You probably have these (${staples.length})</summary><div class="gl-staple-list">${staples.map((it) => box(it, true)).join('')}</div></details>` : ''}`
+          : `<p class="gl-none">Plan a few dinners and their ingredients show up here.</p>`}
+      </div>
+    </section>`;
+  }
+
+  function groceryText(weekKey, dates) {
+    const { groups, staples } = groceryFor(dates, planStore.all());
+    const checked = browserStore.get(GROCERY_KEY, {})[weekKey] || {};
+    const lines = [];
+    groups.forEach((g) => {
+      const left = g.items.filter((it) => !checked[it.key]);
+      if (!left.length) return;
+      lines.push(g.r.name.toUpperCase());
+      left.forEach((it) => lines.push('☐ ' + it.text));
+      lines.push('');
+    });
+    const st = staples.filter((it) => !checked[it.key]);
+    if (st.length) { lines.push('CHECK THE PANTRY'); st.forEach((it) => lines.push('☐ ' + it.text)); }
+    return lines.join('\n').trim();
+  }
+
+  function renderWeek(params) {
+    const start = mondayOf(parseYmd(params.get('w')) || todayD());
+    const today = todayD();
+    const dates = Array.from({ length: 7 }, (_, k) => addDays(start, k));
+    const plan = planStore.all();
+    const thisWeek = ymd(start) === ymd(mondayOf(today));
+    const end = dates[6];
+    const range = fmt(start, { month: 'short', day: 'numeric' }) + ' – ' + fmt(end, start.getMonth() === end.getMonth() ? { day: 'numeric' } : { month: 'short', day: 'numeric' });
+    const planned = dates.filter((d) => plan[ymd(d)]).length;
+    const open = 7 - planned;
+    const notes = dates.filter((d) => plan[ymd(d)] && plan[ymd(d)].note).length;
+    const summary = planned === 0 ? 'Nothing planned yet.'
+      : `${planned} of 7 nights planned` + (open ? ` · ${open} open` : '') + (notes ? ` · ${notes} night${notes > 1 ? 's' : ''} off the stove` : '');
+    document.title = 'Meal plan · Our Family Table';
+    main.innerHTML = `
+      <section class="wrap plan-hero">
+        <div class="plan-head">
+          <div class="plan-head-text">
+            <span class="eyebrow">${thisWeek ? 'This week' : 'Week of'} · ${esc(range)}</span>
+            <h1>What's for<br><i>dinner this week.</i></h1>
+            <p>${esc(summary)}</p>
+          </div>
+          <div class="plan-head-actions">
+            ${viewToggle('week', start, ymd(start).slice(0, 7))}
+            ${open ? `<button type="button" class="btn btn-light" data-act="fill-week" data-focus="fill-week">${icon('dice')}Fill ${open === 7 ? 'the week' : open === 1 ? 'the open night' : `${open} open nights`} for me</button>` : ''}
+            <button type="button" class="btn btn-outline-light" data-act="to-groceries">${icon('shopping-list')}Grocery list</button>
+          </div>
+        </div>
+        ${surprisePanel(false)}
+      </section>
+      <section class="wrap week">
+        <div class="week-bar">
+          <h2>The week</h2>
+          <div class="week-nav">
+            <a class="icon-btn" href="#/plan?w=${ymd(addDays(start, -7))}" aria-label="Previous week">${icon('chev-l')}</a>
+            ${thisWeek ? '' : `<a class="btn btn-ghost" href="#/plan">This week</a>`}
+            <a class="icon-btn" href="#/plan?w=${ymd(addDays(start, 7))}" aria-label="Next week">${icon('chev-r')}</a>
+          </div>
+        </div>
+        <div class="week-grid">${dates.map((d) => dayCard(d, plan[ymd(d)], ymd(d) === ymd(today))).join('')}</div>
+        ${browserStore.ok ? '<p class="plan-foot">Saved on this device. Other phones and computers have their own plan for now.</p>'
+          : '<p class="plan-foot">This browser won\'t let the site save, so the plan disappears when you close the page. Private browsing often does this.</p>'}
+      </section>
+      ${groceryHtml(ymd(start), dates.map(ymd), plan)}`;
+  }
+
+  // ---------- month view ----------
+  function renderMonth(params) {
+    const m = /^(\d{4})-(\d{2})$/.exec(params.get('m') || '');
+    const today = todayD();
+    const first = m ? new Date(+m[1], +m[2] - 1, 1) : new Date(today.getFullYear(), today.getMonth(), 1);
+    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+    const gridStart = mondayOf(first);
+    const gridEnd = addDays(mondayOf(last), 6);
+    const cells = [];
+    for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) cells.push(d);
+    const plan = planStore.all();
+    const inMonth = (d) => d.getMonth() === first.getMonth();
+    const monthDays = cells.filter(inMonth);
+    const planned = monthDays.filter((d) => plan[ymd(d)]).length;
+    const fillable = monthDays.filter((d) => d >= today && !plan[ymd(d)]).length;
+    const mk = (d) => ymd(d).slice(0, 7);
+    const prev = new Date(first.getFullYear(), first.getMonth() - 1, 1);
+    const next = new Date(first.getFullYear(), first.getMonth() + 1, 1);
+    const weekForToggle = first.getMonth() === today.getMonth() && first.getFullYear() === today.getFullYear() ? mondayOf(today) : mondayOf(first);
+    document.title = fmt(first, { month: 'long', year: 'numeric' }) + ' · Meal plan · Our Family Table';
+    main.innerHTML = `
+      <section class="wrap month-top">
+        <div>
+          <span class="eyebrow">${planned} of ${monthDays.length} dinners planned</span>
+          <h1>${esc(fmt(first, { month: 'long' }))} <i>${first.getFullYear()}</i></h1>
+        </div>
+        <div class="month-actions">
+          ${viewToggle('month', weekForToggle, mk(first)).replace('view-toggle', 'view-toggle view-toggle-light')}
+          <a class="icon-btn" href="#/plan/month?m=${mk(prev)}" aria-label="Previous month">${icon('chev-l')}</a>
+          <a class="icon-btn" href="#/plan/month?m=${mk(next)}" aria-label="Next month">${icon('chev-r')}</a>
+          ${fillable ? `<button type="button" class="btn btn-olive" data-act="fill-month" data-m="${mk(first)}" data-focus="fill-month">${icon('dice')}Fill ${fillable} open night${fillable > 1 ? 's' : ''}</button>` : ''}
+        </div>
+      </section>
+      <section class="wrap">
+        <div class="month">
+          <div class="month-dow" aria-hidden="true">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((x) => `<span>${x}</span>`).join('')}</div>
+          <div class="month-grid">${cells.map((d) => {
+            const date = ymd(d), e = plan[date], r = e && e.slug ? bySlug(e.slug) : null;
+            const cls = ['mcell', inMonth(d) ? '' : 'is-out', date === ymd(today) ? 'is-today' : ''].join(' ');
+            const wd = `<span class="mday"><span class="mdow">${esc(fmt(d, { weekday: 'short' }))}</span>${d.getDate()}</span>`;
+            if (!inMonth(d)) return `<div class="${cls}" aria-hidden="true">${wd}</div>`;
+            let inner;
+            if (e) inner = `${r ? `<a class="mmeal" href="#/recipe/${esc(r.slug)}">${esc(r.name)}</a>` : `<span class="mnote">${esc(e.note || 'Recipe left the book')}</span>`}
+              <button type="button" class="mclear" data-act="clear" data-date="${date}" aria-label="Clear ${esc(fmt(d, { weekday: 'long', month: 'long', day: 'numeric' }))}">${icon('close')}</button>`;
+            else inner = `<div class="madd"><button type="button" data-act="choose" data-date="${date}" data-focus="choose-${date}" aria-label="Plan ${esc(fmt(d, { weekday: 'long', month: 'long', day: 'numeric' }))}">+ Add</button><button type="button" class="icon-btn" data-act="roll" data-date="${date}" data-focus="roll-${date}" aria-label="Pick a dinner for ${esc(fmt(d, { month: 'long', day: 'numeric' }))}" title="Pick for me">${icon('dice')}</button></div>`;
+            return `<div class="${cls} ${e ? 'is-set' : ''}">${wd}${inner}</div>`;
+          }).join('')}</div>
+        </div>
+        <p class="plan-foot">Saved on this device. Tap a dinner to open the recipe.</p>
+      </section>`;
+  }
+
+  function renderPlan(parts, params) {
+    if (parts[1] === 'month') renderMonth(params); else renderWeek(params);
+  }
+
+  // One click handler for every planner button, so re-rendering never loses wiring.
+  function wirePlanner() {
+    main.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-act], [data-sp]');
+      if (!b || !main.contains(b)) return;
+      if (b.dataset.sp) {
+        const k = b.dataset.sp, v = b.dataset.val;
+        if (k === 'meal') sp.meal = v || null;
+        else if (k === 'cuisine') sp.cuisine = v || null;
+        else sp[k] = !sp[k];
+        sp.pick = null;
+        return rerenderPlan();
+      }
+      const date = b.dataset.date;
+      switch (b.dataset.act) {
+        case 'shuffle': shuffleSurprise(); return rerenderPlan();
+        case 'add-pick': if (sp.pick) openNightPicker(sp.pick); return;
+        case 'add-recipe': openNightPicker(b.dataset.slug); return;
+        case 'choose': openChooser(date); return;
+        case 'roll': {
+          const plan = planStore.all();
+          const cur = plan[date] && plan[date].slug;
+          const r = randomFrom(dinnerPool(), [...nearbySlugs(date, plan), cur].filter(Boolean));
+          if (r) setNight(date, { slug: r.slug }, `${esc(r.name)} for ${esc(shortDate(parseYmd(date)))}`);
+          return;
+        }
+        case 'clear': {
+          const d = parseYmd(date);
+          setNight(date, null, `Cleared ${esc(shortDate(d))}`);
+          return;
+        }
+        case 'fill-week': case 'fill-month': {
+          const before = planStore.all();
+          let dates;
+          if (b.dataset.act === 'fill-week') {
+            const start = mondayOf(parseYmd(parseHash().params.get('w')) || todayD());
+            dates = Array.from({ length: 7 }, (_, k) => ymd(addDays(start, k)));
+          } else {
+            const [y, mo] = b.dataset.m.split('-').map(Number);
+            const today = todayD();
+            dates = [];
+            for (let d = new Date(y, mo - 1, 1); d.getMonth() === mo - 1; d = addDays(d, 1)) if (d >= today) dates.push(ymd(d));
+          }
+          const n = fillDays(dates);
+          rerenderPlan();
+          toast(n ? `Filled ${n} night${n > 1 ? 's' : ''}. Shuffle any you don't like.` : 'Add a few dinners to the book first.',
+            n ? () => { browserStore.set(PLAN_KEY, before); rerenderPlan(); } : null);
+          return;
+        }
+        case 'to-groceries': { const g = document.getElementById('groceries'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+        case 'uncheck-list': {
+          const wk = document.getElementById('groceries').dataset.week;
+          const all = browserStore.get(GROCERY_KEY, {}); delete all[wk]; browserStore.set(GROCERY_KEY, all);
+          main.querySelectorAll('[data-gl]').forEach((c) => { c.checked = false; });
+          return;
+        }
+        case 'print-list': {
+          document.body.classList.add('printing-list');
+          const off = () => { document.body.classList.remove('printing-list'); window.removeEventListener('afterprint', off); };
+          window.addEventListener('afterprint', off);
+          try { window.print(); } catch (_) {}
+          setTimeout(off, 1500);
+          return;
+        }
+        case 'copy-list': {
+          const wk = document.getElementById('groceries').dataset.week;
+          const start = parseYmd(wk);
+          const text = groceryText(wk, Array.from({ length: 7 }, (_, k) => ymd(addDays(start, k))));
+          try { await navigator.clipboard.writeText(text); toast('Grocery list copied. Paste it into a text or your notes.'); }
+          catch (_) { window.prompt('Copy your grocery list:', text); }
+          return;
+        }
+      }
+    });
+    // Remember checked grocery items per week.
+    main.addEventListener('change', (e) => {
+      const c = e.target.closest('[data-gl]');
+      if (!c) return;
+      const wk = document.getElementById('groceries').dataset.week;
+      const all = browserStore.get(GROCERY_KEY, {});
+      all[wk] = all[wk] || {};
+      if (c.checked) all[wk][c.dataset.gl] = 1; else delete all[wk][c.dataset.gl];
+      browserStore.set(GROCERY_KEY, all);
+    });
+    // Another tab changed the plan: show it.
+    window.addEventListener('storage', (e) => { if (e.key === PLAN_KEY) rerenderPlan(); });
+  }
+
   // ---------- boot ----------
   async function boot() {
     try {
@@ -515,6 +1073,7 @@
       return;
     }
     wireSlashKey();
+    wirePlanner();
     window.addEventListener('hashchange', () => { document.title = 'Our Family Table'; route(); });
     route();
   }
