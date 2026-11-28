@@ -552,15 +552,138 @@
       },
     };
   })();
+  // With a plan-api address in index.html, the plan is shared through the Meal Plan Worker and Notion.
+  // This browser keeps a copy so pages draw instantly and work offline; changes are sent in the background.
+  const PLAN_API = ((document.querySelector('meta[name="plan-api"]') || {}).content || '').trim().replace(/\/+$/, '');
+  const FAMILY_KEY = 'oft-family-key';
   const planStore = {
+    shared: !!PLAN_API,
     all() { return browserStore.get(PLAN_KEY, {}); },
     get(date) { return this.all()[date] || null; },
     set(date, entry) {
       const p = this.all();
       if (entry) p[date] = entry; else delete p[date];
-      browserStore.set(PLAN_KEY, p);
+      this.replaceAll(p);
+    },
+    // Swap in a whole new plan and send only the nights that changed.
+    replaceAll(next) {
+      const prev = this.all();
+      browserStore.set(PLAN_KEY, next);
+      if (!PLAN_API) return;
+      const changes = {};
+      new Set([...Object.keys(prev), ...Object.keys(next)]).forEach((d) => {
+        if (JSON.stringify(prev[d] || null) !== JSON.stringify(next[d] || null)) changes[d] = next[d] || null;
+      });
+      if (Object.keys(changes).length) planSync.push(changes, prev);
     },
   };
+
+  const planSync = (() => {
+    let pending = 0, lastPull = 0;
+    const range = () => [ymd(addDays(todayD(), -60)), ymd(addDays(todayD(), 180))];
+
+    // Fetch the shared plan and make it this browser's copy. Nights outside the window are left alone.
+    async function pull(force) {
+      if (!PLAN_API || pending || (!force && Date.now() - lastPull < 15000)) return;
+      lastPull = Date.now();
+      const [from, to] = range();
+      let server;
+      try {
+        const res = await fetch(`${PLAN_API}/plan?from=${from}&to=${to}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        server = (await res.json()).plan || {};
+      } catch (_) { return; } // offline: keep showing the saved copy
+      if (pending) return; // a change went out while we waited; the next pull will catch up
+      const local = planStore.all();
+      const next = {};
+      Object.keys(local).forEach((d) => { if (d < from || d > to) next[d] = local[d]; });
+      Object.assign(next, server);
+      // First time on this device: send up any future nights planned here before the plan was shared.
+      const extra = {};
+      if (!browserStore.get('oft-plan-shared', false)) {
+        const today = ymd(todayD());
+        Object.keys(local).forEach((d) => { if (d >= today && d <= to && !server[d]) { next[d] = local[d]; extra[d] = local[d]; } });
+        browserStore.set('oft-plan-shared', true);
+      }
+      const changed = JSON.stringify(next) !== JSON.stringify(local);
+      browserStore.set(PLAN_KEY, next);
+      if (Object.keys(extra).length) push(extra, server);
+      if (changed) rerenderPlan();
+    }
+
+    async function send(changes, key) {
+      return fetch(`${PLAN_API}/plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Family-Key': key },
+        body: JSON.stringify({ changes }),
+      });
+    }
+
+    // Send changed nights (45 at most per request). If it can't be saved, put those nights back the way they were.
+    async function push(changes, prev) {
+      pending++;
+      const dates = Object.keys(changes);
+      let ok = false;
+      try {
+        let key = browserStore.get(FAMILY_KEY, '');
+        if (!key) key = await askFamilyKey();
+        for (let tries = 0; key && tries < 3 && !ok; tries++) {
+          ok = true;
+          for (let i = 0; i < dates.length && ok; i += 45) {
+            const part = Object.fromEntries(dates.slice(i, i + 45).map((d) => [d, changes[d]]));
+            const res = await send(part, key);
+            if (res.status === 401) {
+              ok = false;
+              browserStore.set(FAMILY_KEY, '');
+              key = await askFamilyKey('That passcode didn\'t match. Try again?');
+            } else if (!res.ok) { ok = false; key = null; }
+          }
+        }
+        if (ok) browserStore.set(FAMILY_KEY, key);
+      } catch (_) { ok = false; }
+      pending--;
+      if (ok) return;
+      const p = planStore.all();
+      dates.forEach((d) => { if (prev[d]) p[d] = prev[d]; else delete p[d]; });
+      browserStore.set(PLAN_KEY, p);
+      rerenderPlan();
+      toast('That change didn\'t save to the family plan. Check your connection or passcode and try again.');
+    }
+
+    return { pull, push };
+  })();
+
+  // Ask once per device for the family passcode. Resolves to the passcode, or null if they cancel.
+  function askFamilyKey(hint) {
+    return new Promise((resolve) => {
+      const old = document.getElementById('family-key');
+      if (old) old.remove();
+      const dlg = document.createElement('dialog');
+      dlg.id = 'family-key';
+      dlg.className = 'chooser key-dialog';
+      dlg.setAttribute('aria-labelledby', 'family-key-title');
+      dlg.innerHTML = `
+        <form method="dialog" class="key-form">
+          <div class="chooser-head">
+            <div><span class="eyebrow">Shared meal plan</span><h2 id="family-key-title">Family passcode</h2></div>
+            <button type="button" class="icon-btn" data-close aria-label="Cancel">${icon('close')}</button>
+          </div>
+          <p class="chooser-hint">${esc(hint || 'Enter it once on this device to change the plan. Anyone can look at the plan without it.')}</p>
+          <label class="sr-only" for="family-key-input">Family passcode</label>
+          <input id="family-key-input" class="key-input" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" required>
+          <div class="key-actions">
+            <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+            <button type="submit" class="btn">Save</button>
+          </div>
+        </form>`;
+      document.body.appendChild(dlg);
+      let value = null;
+      dlg.querySelector('form').addEventListener('submit', () => { value = dlg.querySelector('input').value.trim() || null; });
+      dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target.closest('[data-close]')) dlg.close(); });
+      dlg.addEventListener('close', () => { dlg.remove(); resolve(value); });
+      dlg.showModal();
+    });
+  }
 
   const NOTES = ['Leftovers', 'Eating out'];
   const pad = (n) => String(n).padStart(2, '0');
@@ -607,7 +730,7 @@
       const r = randomFrom(dinnerPool(), nearbySlugs(date, plan));
       if (r) { plan[date] = { slug: r.slug }; n++; }
     });
-    browserStore.set(PLAN_KEY, plan);
+    planStore.replaceAll(plan);
     return n;
   }
 
@@ -927,7 +1050,8 @@
           </div>
         </div>
         <div class="week-grid">${dates.map((d) => dayCard(d, plan[ymd(d)], ymd(d) === ymd(today))).join('')}</div>
-        ${browserStore.ok ? '<p class="plan-foot">Saved on this device. Other phones and computers have their own plan for now.</p>'
+        ${planStore.shared ? '<p class="plan-foot">Shared with the family through Notion. Grocery checkmarks stay on this device.</p>'
+          : browserStore.ok ? '<p class="plan-foot">Saved on this device. Other phones and computers have their own plan for now.</p>'
           : '<p class="plan-foot">This browser won\'t let the site save, so the plan disappears when you close the page. Private browsing often does this.</p>'}
       </section>
       ${groceryHtml(ymd(start), dates.map(ymd), plan)}`;
@@ -982,7 +1106,7 @@
             return `<div class="${cls} ${e ? 'is-set' : ''}">${wd}${inner}</div>`;
           }).join('')}</div>
         </div>
-        <p class="plan-foot">Saved on this device. Tap a dinner to open the recipe.</p>
+        <p class="plan-foot">${planStore.shared ? 'Shared with the family.' : 'Saved on this device.'} Tap a dinner to open the recipe.</p>
       </section>`;
   }
 
@@ -1036,7 +1160,7 @@
           const n = fillDays(dates);
           rerenderPlan();
           toast(n ? `Filled ${n} night${n > 1 ? 's' : ''}. Shuffle any you don't like.` : 'Add a few dinners to the book first.',
-            n ? () => { browserStore.set(PLAN_KEY, before); rerenderPlan(); } : null);
+            n ? () => { planStore.replaceAll(before); rerenderPlan(); } : null);
           return;
         }
         case 'reset-week': case 'reset-month': {
@@ -1062,11 +1186,11 @@
           // Grocery checks are saved per week (keyed by that week's Monday), so clear every week that touches these dates.
           const weeks = new Set(dates.map((d) => ymd(mondayOf(parseYmd(d)))));
           weeks.forEach((w) => { delete grocery[w]; });
-          browserStore.set(PLAN_KEY, plan);
+          planStore.replaceAll(plan);
           browserStore.set(GROCERY_KEY, grocery);
           rerenderPlan();
           toast(`Cleared ${label}${n ? ` (${n} night${n > 1 ? 's' : ''})` : ''}.`,
-            () => { browserStore.set(PLAN_KEY, planBefore); browserStore.set(GROCERY_KEY, groceryBefore); rerenderPlan(); });
+            () => { planStore.replaceAll(planBefore); browserStore.set(GROCERY_KEY, groceryBefore); rerenderPlan(); });
           return;
         }
         case 'to-groceries': { const g = document.getElementById('groceries'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
@@ -1123,6 +1247,10 @@
     wirePlanner();
     window.addEventListener('hashchange', () => { document.title = 'Our Family Table'; route(); });
     route();
+    // Pick up changes made on other phones: now, whenever the page comes back into view, and on the plan pages.
+    planSync.pull(true);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') planSync.pull(); });
+    window.addEventListener('hashchange', () => { if (/^#\/(plan|surprise)/.test(location.hash)) planSync.pull(); });
   }
   boot();
 })();

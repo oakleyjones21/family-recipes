@@ -1,0 +1,15 @@
+name = "family-table-plan"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# The "Meal Plan" database in Notion (Family Recipe Book → Meal Plan).
+MEAL_PLAN_DATA_SOURCE_ID = "42689a97-4512-812f-afb6-000b2aa0fd47"
+# The published recipe site. Only this site (and localhost) may call the Worker from a browser.
+SITE_URL = "https://oakleyjones21.github.io/family-recipes/"
+# Decides what "today" means for the widget.
+TIME_ZONE = "America/Boise"
+
+# Secrets, set once with `npx wrangler secret put NAME` (never commit them):
+#   NOTION_TOKEN  the Meal Plan connection's Internal Integration Secret
+#   FAMILY_KEY    the family passcode the site asks for before changing the plan

@@ -25,6 +25,10 @@ A read-only recipe website that mirrors the **Recipes** database in Notion. Edit
 
 When it finishes, the site is live at `https://<your-username>.github.io/<repo-name>/`.
 
+## Shared meal plan and iPhone widget
+
+The meal plan can be shared across the family through a **Meal Plan** database in Notion, with an iPhone widget that shows tonight's dinner. Setup is in [`worker/README.md`](worker/README.md). Until then, each device keeps its own plan.
+
 ## What gets published
 
 | Notion Status   | On the site?                 |

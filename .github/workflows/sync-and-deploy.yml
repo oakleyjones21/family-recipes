@@ -26,6 +26,8 @@ jobs:
           node-version: 22
       - name: Test the Notion parser
         run: node scripts/test-parse.mjs
+      - name: Test the Meal Plan Worker
+        run: node worker/test.mjs
       - name: Pull recipes from Notion
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}

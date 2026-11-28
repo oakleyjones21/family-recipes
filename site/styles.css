@@ -397,6 +397,11 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
 .chooser-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .chooser-thumb svg { width: 24px; height: 24px; opacity: .55; }
 .chooser-none { color: var(--olive); padding: 12px 8px; }
+.key-dialog { width: min(440px, calc(100vw - 24px)); }
+.key-form { display: flex; flex-direction: column; gap: 14px; margin: 0; }
+.key-input { height: 52px; border: 1px solid var(--sand); border-radius: 16px; padding: 0 16px; font-size: 16px; background: var(--ground); }
+.key-input:focus { outline: none; border-color: var(--olive); box-shadow: 0 0 0 3px rgba(92, 90, 69, .15); }
+.key-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .night-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; overflow-y: auto; padding: 6px; margin: -6px; }
 .night:focus-visible { outline-offset: 1px; }
 .night { min-height: 64px; border: 1.5px dashed var(--taupe); background: var(--surface); border-radius: 14px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; line-height: 1.15; min-width: 0; }
