@@ -145,11 +145,11 @@
 
     const tryCounts = {};
     pool.forEach((r) => [...(r.method || []), r.cuisine].filter(Boolean).forEach((k) => { tryCounts[k] = (tryCounts[k] || 0) + 1; }));
-    const tries = Object.entries(tryCounts).sort((a, b) => b[1] - a[1]).map(([k]) => k).slice(0, 4);
+    const tries = Object.entries(tryCounts).sort((a, b) => b[1] - a[1]).map(([k]) => k).slice(0, 3);
 
     const tagCounts = {};
     pool.forEach((r) => (r.keyIngredients || []).forEach((k) => { tagCounts[k] = (tagCounts[k] || 0) + 1; }));
-    const suggestions = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).map(([k]) => k).filter((k) => !terms.includes(norm(k))).slice(0, 4);
+    const suggestions = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).map(([k]) => k).filter((k) => !terms.includes(norm(k))).slice(0, 3);
     const meals = [...new Set(pool.map((r) => r.mealType).filter(Boolean))].sort();
 
     const heading = terms.length
