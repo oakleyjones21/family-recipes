@@ -730,8 +730,10 @@
     });
     dlg.addEventListener('close', () => dlg.remove());
     dlg.showModal();
+    // On a keyboard, land on the first open night. On touch, park focus on the dialog itself so no ring shows on a night you didn't pick.
     const first = dlg.querySelector('.night:not(.is-set)') || dlg.querySelector('.night');
-    if (first) first.focus();
+    if (first && matchMedia('(hover: hover) and (pointer: fine)').matches) first.focus();
+    else { dlg.tabIndex = -1; dlg.focus(); }
   }
 
   // ---------- Surprise me panel ----------
