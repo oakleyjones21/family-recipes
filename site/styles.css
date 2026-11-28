@@ -236,7 +236,8 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
   .notes li { break-inside: avoid; margin-bottom: 3px; }
   .notes .related { margin-top: 6px; }
   .notes .related ul { column-count: 1; }
-  a { text-decoration: none; color: inherit; }
+  .notes .related { display: none !important; }
+  a, a:hover, .inline-link { text-decoration: none !important; border: 0 !important; color: inherit !important; background: none !important; }
 }
 
 /* ---------- line icons ---------- */
