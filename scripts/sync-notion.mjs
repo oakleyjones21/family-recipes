@@ -91,13 +91,17 @@ function prop(p) {
   }
 }
 
+// Meal Type can be a single select or a multi-select; the site always gets a list.
+const asList = (v) => (Array.isArray(v) ? v : v ? [v] : []);
+
 export function parseProperties(page) {
   const P = page.properties || {};
   const rating = prop(P['Rating']);
   return {
     id: page.id,
     name: prop(P['Name']) || 'Untitled recipe',
-    mealType: prop(P['Meal Type']),
+    mealTypes: asList(prop(P['Meal Type'])),
+    mealType: asList(prop(P['Meal Type']))[0] || null, // primary (first) meal type, kept for older readers
     cuisine: prop(P['Cuisine']),
     occasion: prop(P['Occasion']) || [],
     totalTime: prop(P['Total Time']),

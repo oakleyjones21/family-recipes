@@ -74,10 +74,13 @@
     ? `<svg class="${cls}" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON_PATHS[name]}"/></svg>`
     : '';
   // Pick a category icon from the recipe's meal type and cuisine.
+  // A recipe can have several meal types. Older data only has the single mealType.
+  const mealsOf = (r) => (r.mealTypes && r.mealTypes.length ? r.mealTypes : r.mealType ? [r.mealType] : []);
   function categoryIcon(r) {
-    const meal = norm(r.mealType), cuisine = norm(r.cuisine);
+    const cuisine = norm(r.cuisine);
     const byMeal = { breakfast: 'breakfast', brunch: 'breakfast', dessert: 'dessert', soup: 'soup', salad: 'salad', bread: 'bread', baking: 'bread', drink: 'drinks', drinks: 'drinks', side: 'sides', sides: 'sides', lunch: 'sandwich', snack: 'cookie', snacks: 'cookie', appetizer: 'appetizer', appetizers: 'appetizer', 'sauce & staple': 'sauce', sauce: 'sauce', staple: 'sauce' };
     const byCuisine = { italian: 'pasta', asian: 'asian', chinese: 'asian', japanese: 'asian', thai: 'asian', korean: 'asian', vietnamese: 'asian', mexican: 'taco', 'tex-mex': 'taco', comfort: 'comfort', bbq: 'grill', seafood: 'fish' };
+    const meal = mealsOf(r).map(norm).find((m) => byMeal[m]);
     return byMeal[meal] || byCuisine[cuisine] || 'dinner';
   }
 
@@ -144,7 +147,7 @@
     const terms = state.terms;
     let scored = pool.map((r) => ({ r, hits: terms.filter((t) => uses(r, t)).length }));
     if (terms.length) scored = scored.filter((x) => x.hits > 0);
-    if (state.meal) scored = scored.filter((x) => x.r.mealType === state.meal);
+    if (state.meal) scored = scored.filter((x) => mealsOf(x.r).includes(state.meal));
     if (state.kid) scored = scored.filter((x) => (x.r.occasion || []).includes('Kid Can Make'));
     if (state.quick) scored = scored.filter((x) => isQuick(x.r));
     scored.sort((a, b) => b.hits - a.hits || (b.r.rating || 0) - (a.r.rating || 0) || a.r.name.localeCompare(b.r.name));
@@ -164,7 +167,7 @@
     const tagCounts = {};
     pool.forEach((r) => (r.keyIngredients || []).forEach((k) => { tagCounts[k] = (tagCounts[k] || 0) + 1; }));
     const suggestions = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).map(([k]) => k).filter((k) => !terms.includes(norm(k))).slice(0, 3);
-    const meals = [...new Set(pool.map((r) => r.mealType).filter(Boolean))].sort();
+    const meals = [...new Set(pool.flatMap(mealsOf))].sort();
 
     const heading = terms.length
       ? `${scored.length} ${scored.length === 1 ? 'recipe' : 'recipes'} with ${esc(terms.join(', '))}`
@@ -195,7 +198,7 @@
           <h2>${heading}</h2>
           <div class="filters">
           <button type="button" class="filter" data-meal="" aria-pressed="${!state.meal}">Everything</button>
-          ${meals.map((m) => `<button type="button" class="filter" data-meal="${esc(m)}" aria-pressed="${state.meal === m}">${icon(categoryIcon({ mealType: m }))}${esc(m)}</button>`).join('')}
+          ${meals.map((m) => `<button type="button" class="filter" data-meal="${esc(m)}" aria-pressed="${state.meal === m}">${icon(categoryIcon({ mealTypes: [m] }))}${esc(m)}</button>`).join('')}
           <button type="button" class="filter" data-toggle="kid" aria-pressed="${state.kid}">${icon('kid-friendly')}Kid can make</button>
           <button type="button" class="filter" data-toggle="quick" aria-pressed="${state.quick}">${icon('quick')}Under 30 min</button>
           </div>
@@ -242,7 +245,7 @@
 
   function fieldsOf(r) {
     const f = [{ label: 'Name', text: r.name, w: 10 }];
-    const tags = [r.cuisine, r.mealType, ...(r.occasion || []), ...(r.keyIngredients || []), ...(r.method || [])].filter(Boolean);
+    const tags = [r.cuisine, ...mealsOf(r), ...(r.occasion || []), ...(r.keyIngredients || []), ...(r.method || [])].filter(Boolean);
     if (tags.length) f.push({ label: 'Tags', text: tags.join(' · '), w: 5 });
     (r.ingredientGroups || []).forEach((g) => g.items.forEach((it) => f.push({ label: 'Ingredient', text: unlink(it), w: 3 })));
     (r.notes || []).forEach((n) => f.push({ label: 'Note', text: unlink(n), w: 2 }));
@@ -365,7 +368,7 @@
     const r = state.recipes.find((x) => x.slug === slug);
     if (!r) { main.innerHTML = `<section class="wrap recipe"><a class="back" href="#/">← All recipes</a><div class="empty">That recipe isn't in the book.</div></section>`; return; }
     document.title = r.name + ' · Our Family Table';
-    const tags = [r.cuisine, r.mealType, ...(r.occasion || [])].filter(Boolean);
+    const tags = [r.cuisine, ...mealsOf(r), ...(r.occasion || [])].filter(Boolean);
     const stat = (label, val, ic) => val ? `<div class="stat"><div class="stat-label">${icon(ic)}${label}</div><div class="stat-value">${esc(val)}</div></div>` : '';
     let n = 0;
     main.innerHTML = `
@@ -373,7 +376,7 @@
         <a class="back" href="javascript:history.back()">← Back</a>
         <article class="recipe-card">
           <div class="recipe-side">
-            <span class="eyebrow">${esc([r.cuisine, r.mealType].filter(Boolean).join(' · ') || 'Recipe')}</span>
+            <span class="eyebrow">${esc([r.cuisine, mealsOf(r).join(' / ')].filter(Boolean).join(' · ') || 'Recipe')}</span>
             <h1>${esc(r.name)}</h1>
             <div class="stats">${stat('SERVES', r.servings, 'servings')}${stat('PREP', mins(r.prep), 'prep-time')}${stat('COOK', mins(r.cook), 'cook-time')}</div>
             ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
@@ -564,7 +567,7 @@
   // Surprise-me filters. Dinner by default, since that's the nightly question.
   const sp = { meal: 'Dinner', cuisine: null, kid: false, quick: false, pick: null };
   function surprisePool() {
-    return visible().filter((r) => (!sp.meal || r.mealType === sp.meal) && (!sp.cuisine || r.cuisine === sp.cuisine)
+    return visible().filter((r) => (!sp.meal || mealsOf(r).includes(sp.meal)) && (!sp.cuisine || r.cuisine === sp.cuisine)
       && (!sp.kid || (r.occasion || []).includes('Kid Can Make')) && (!sp.quick || isQuick(r)));
   }
   function randomFrom(pool, avoid = []) {
@@ -573,7 +576,7 @@
     return from.length ? from[Math.floor(Math.random() * from.length)] : null;
   }
   function dinnerPool() {
-    const d = visible().filter((r) => r.mealType === 'Dinner');
+    const d = visible().filter((r) => mealsOf(r).includes('Dinner'));
     return d.length ? d : visible();
   }
   function shuffleSurprise() {
@@ -660,9 +663,9 @@
     const draw = () => {
       const v = q.value.trim();
       const rs = v ? search(v).results.map((x) => x.r)
-        : visible().slice().sort((a, b) => (b.mealType === 'Dinner') - (a.mealType === 'Dinner') || a.name.localeCompare(b.name));
+        : visible().slice().sort((a, b) => mealsOf(b).includes('Dinner') - mealsOf(a).includes('Dinner') || a.name.localeCompare(b.name));
       list.innerHTML = rs.length
-        ? rs.map((r) => `<li><button type="button" class="chooser-item" data-pick="${esc(r.slug)}">${thumb(r, 'chooser-thumb')}<span><b>${esc(r.name)}</b><small>${esc([r.mealType, timeLabel(r)].filter(Boolean).join(' · '))}</small></span></button></li>`).join('')
+        ? rs.map((r) => `<li><button type="button" class="chooser-item" data-pick="${esc(r.slug)}">${thumb(r, 'chooser-thumb')}<span><b>${esc(r.name)}</b><small>${esc([mealsOf(r).join(' / '), timeLabel(r)].filter(Boolean).join(' · '))}</small></span></button></li>`).join('')
         : `<li class="chooser-none">No recipes match “${esc(v)}”.</li>`;
     };
     draw();
@@ -731,7 +734,7 @@
   // ---------- Surprise me panel ----------
   function surprisePanel(big) {
     const all = visible();
-    const meals = [...new Set(all.map((r) => r.mealType).filter(Boolean))].sort();
+    const meals = [...new Set(all.flatMap(mealsOf))].sort();
     const cuisines = [...new Set(all.map((r) => r.cuisine).filter(Boolean))].sort();
     if (sp.pick && !surprisePool().some((r) => r.slug === sp.pick)) sp.pick = null;
     if (!sp.pick) shuffleSurprise();
