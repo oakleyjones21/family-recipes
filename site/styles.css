@@ -151,6 +151,9 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
 .actions .cook-btn { grid-column: 1 / -1; height: 52px; font-size: 16px; }
 .actions .print-hint { grid-column: 1 / -1; margin: 0; }
 .action-bar { display: none; }
+.to-top { position: fixed; right: 24px; bottom: 24px; z-index: 9; width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--sand); background: var(--surface); color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer; box-shadow: 0 4px 14px rgba(62, 60, 50, .15); }
+.to-top:hover { background: var(--ground); }
+.to-top[hidden] { display: none; }
 .btn { border: 0; background: var(--ink); color: var(--on-dark); border-radius: 999px; padding: 0 22px; height: 48px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; }
 .btn:hover { color: var(--on-dark); background: var(--olive); }
 .btn-ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--sand); font-weight: 500; }
@@ -209,6 +212,7 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
   .matches .num { font-size: 72px; }
   .recipe-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "side" "main" "notes"; padding: 24px; gap: 32px; }
   .recipe { padding-bottom: 110px; }
+  .to-top { right: 16px; bottom: calc(86px + env(safe-area-inset-bottom)); }
   .action-bar { display: flex; gap: 8px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; padding: 10px 18px calc(10px + env(safe-area-inset-bottom)); background: var(--ground); border-top: 1px solid var(--stone); }
   .action-bar .btn { flex: 1 1 auto; justify-content: center; height: 46px; padding: 0 12px; font-size: 14px; }
 }
@@ -220,7 +224,7 @@ mark { background: var(--sand); color: inherit; border-radius: 3px; padding: 0 2
   @page { size: letter; margin: 0; }
   html, body { background: #fff; }
   body { font-size: 11pt; line-height: 1.35; padding: 0; }
-  .site-header, .site-footer, .back, .actions, .action-bar, .cook, .skip, .tags, .source, .related, .hero-photo, .print-hint { display: none !important; }
+  .site-header, .site-footer, .back, .actions, .action-bar, .to-top, .cook, .skip, .tags, .source, .related, .hero-photo, .print-hint { display: none !important; }
   .wrap { padding: 0; max-width: none; }
   .recipe { padding: 0; }
   .recipe-card { display: block; border: 0; border-radius: 0; padding: 0.5in 0.6in; -webkit-box-decoration-break: clone; box-decoration-break: clone; }

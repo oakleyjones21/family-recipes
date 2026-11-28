@@ -380,13 +380,13 @@
             <span class="eyebrow">${esc([r.cuisine, mealsOf(r).join(' / ')].filter(Boolean).join(' · ') || 'Recipe')}</span>
             <h1>${esc(r.name)}</h1>
             <div class="stats">${stat('SERVES', r.servings, 'servings')}${stat('PREP', mins(r.prep), 'prep-time')}${stat('COOK', mins(r.cook), 'cook-time')}</div>
+            ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
             <div class="actions">
               ${(r.steps || []).length ? `<button type="button" class="btn cook-btn">${icon('timer')}Start cooking mode</button>` : ''}
               <button type="button" class="btn btn-ghost" data-act="add-recipe" data-slug="${esc(r.slug)}">${icon('meal-plan')}Add to meal plan</button>
               <button type="button" class="btn btn-ghost" id="print-btn">${icon('print')}Print card</button>
               <p class="print-hint" id="print-hint" hidden>No print menu? Tap your browser's <b>Share</b> button, then <b>Print</b>.</p>
             </div>
-            ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
             ${r.photo ? thumb(r, 'hero-photo photo-top', true) : ''}
             <h2>Ingredients</h2>
             <div class="ing-groups">${(r.ingredientGroups || []).map((g) => `
@@ -410,11 +410,18 @@
         ${(r.steps || []).length ? `<button type="button" class="btn cook-btn">${icon('timer')}Start cooking mode</button>` : ''}
         <button type="button" class="btn btn-ghost" data-act="add-recipe" data-slug="${esc(r.slug)}">${icon('meal-plan')}Add to meal plan</button>
       </div>
+      <button type="button" class="to-top" id="to-top" aria-label="Back to top" hidden>↑</button>
       <div class="cook" id="cook" hidden role="dialog" aria-modal="true" aria-label="Cooking mode"></div>`;
     document.querySelectorAll('.cook-btn').forEach((b) => b.addEventListener('click', () => openCook(r)));
     document.getElementById('print-btn').addEventListener('click', () => printCard(r));
     window.scrollTo(0, 0);
+    const top = document.getElementById('to-top');
+    if (topScroll) window.removeEventListener('scroll', topScroll);
+    topScroll = () => { top.hidden = window.scrollY < 500; };
+    window.addEventListener('scroll', topScroll, { passive: true });
+    top.addEventListener('click', () => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
   }
+  let topScroll = null;
 
   const mins = (m) => { if (!m) return ''; if (m < 60) return m + ' min'; const h = Math.floor(m / 60), r = m % 60; return h + ' hr' + (r ? ' ' + r + ' min' : ''); };
 
