@@ -104,9 +104,6 @@
 
   function route() {
     closeCook();
-    document.querySelectorAll('dialog.chooser').forEach((d) => d.close());
-    const t = document.getElementById('toast');
-    if (t && parseHash().parts[0] !== 'plan') t.hidden = true;
     const { parts, params } = parseHash();
     const view = parts[0] || 'home';
     document.querySelectorAll('[data-nav]').forEach((a) => {
@@ -539,13 +536,134 @@
       },
     };
   })();
+  // When plan-config.js names the go-between, the plan is shared through Notion; otherwise it stays in this browser.
+  const PLAN_API = String(window.OFT_PLAN_API || '').replace(/\/+$/, '');
+  const CODE_KEY = 'oft-family-code';
+  const CACHE_KEY = 'oft-plan-cache-v1';
+  const shared = {
+    on: !!PLAN_API,
+    cache: PLAN_API ? browserStore.get(CACHE_KEY, {}) : {},
+    range: null,          // [from, to] last asked for
+    fetchedAt: 0,
+    status: 'idle',       // idle | loading | ok | error | code
+    pending: 0,
+  };
+  const recipeById = (id) => state.recipes.find((r) => String(r.id || '').replace(/-/g, '') === id);
+  const fromApi = (e) => (e.recipeId ? ((recipeById(e.recipeId) || {}).slug ? { slug: recipeById(e.recipeId).slug } : { recipeId: e.recipeId }) : { note: e.note });
+  function toApi(e) {
+    if (!e) return null;
+    if (e.note) return { note: e.note };
+    const r = bySlug(e.slug);
+    return r && /^[0-9a-f-]{32,36}$/i.test(r.id || '') ? { recipeId: r.id.replace(/-/g, ''), recipeName: r.name } : undefined;
+  }
+  async function api(method, query, body) {
+    const code = browserStore.get(CODE_KEY, '');
+    if (!code) { shared.status = 'code'; throw new Error('code'); }
+    const res = await fetch(PLAN_API + '/plan' + (query || ''), {
+      method, cache: 'no-store',
+      headers: { 'X-Family-Code': code, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (res.status === 401) { browserStore.set(CODE_KEY, ''); shared.status = 'code'; throw new Error('code'); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+    return data;
+  }
+  // Load the shared plan for a span of dates. Re-asks when the span grows or the copy is a minute old.
+  async function syncRange(from, to, force) {
+    if (!shared.on) return;
+    const have = shared.range && shared.range[0] <= from && shared.range[1] >= to;
+    if (!force && have && Date.now() - shared.fetchedAt < 60000) return;
+    if (shared.pending || shared.inflight) return;   // don't overwrite unsaved changes
+    if (!force && shared.status === 'code') return;   // waiting for the passcode
+    if (!force && shared.status === 'error' && Date.now() - shared.failedAt < 20000) return;
+    const span = [have ? shared.range[0] : from, have ? shared.range[1] : to];
+    shared.status = 'loading';
+    shared.inflight = true;
+    try {
+      const { plan } = await api('GET', `?from=${span[0]}&to=${span[1]}`);
+      if (shared.pending) return;
+      for (const d of Object.keys(shared.cache)) if (d >= span[0] && d <= span[1]) delete shared.cache[d];
+      for (const [d, e] of Object.entries(plan || {})) shared.cache[d] = fromApi(e);
+      browserStore.set(CACHE_KEY, shared.cache);
+      shared.range = span; shared.fetchedAt = Date.now(); shared.status = 'ok';
+    } catch (err) {
+      if (shared.status !== 'code') { shared.status = 'error'; shared.failedAt = Date.now(); }
+    }
+    shared.inflight = false;
+    rerenderPlan(true);
+    if (shared.status === 'code') askCode();
+  }
+  function askCode() {
+    if (document.getElementById('codebox')) return;
+    const dlg = document.createElement('dialog');
+    dlg.id = 'codebox'; dlg.className = 'chooser codebox';
+    dlg.setAttribute('aria-labelledby', 'code-title');
+    dlg.innerHTML = `<form method="dialog" class="code-form">
+        <div class="chooser-head"><div><span class="eyebrow">Shared meal plan</span><h2 id="code-title">Family passcode</h2></div>
+        <button type="button" class="icon-btn" data-close aria-label="Close">${icon('close')}</button></div>
+        <p class="chooser-hint">Type it once on this device to see and change the family's plan.</p>
+        <label class="sr-only" for="code-in">Family passcode</label>
+        <input id="code-in" class="code-in" type="password" autocomplete="current-password" required>
+        <button class="btn" type="submit" value="ok">Open the plan</button>
+      </form>`;
+    document.body.appendChild(dlg);
+    dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close('cancel'));
+    dlg.addEventListener('close', () => {
+      const v = dlg.querySelector('#code-in').value.trim();
+      const ok = dlg.returnValue === 'ok' && v;
+      dlg.remove();
+      if (ok) { browserStore.set(CODE_KEY, v); shared.status = 'idle'; shared.fetchedAt = 0; rerenderPlan(); }
+    });
+    dlg.showModal();
+  }
+  function sharedNote() {
+    if (!shared.on) return '';
+    if (shared.status === 'code') return '<p class="plan-foot">The shared plan needs the family passcode. <button type="button" class="link-btn" data-act="code">Enter it</button></p>';
+    if (shared.status === 'error') return '<p class="plan-foot">Couldn\'t reach the shared plan, so this may be out of date. <button type="button" class="link-btn" data-act="resync">Try again</button></p>';
+    const local = Object.keys(browserStore.get(PLAN_KEY, {})).filter((d) => d >= ymd(todayD()));
+    const move = local.length ? ` <button type="button" class="link-btn" data-act="move-local">Copy ${local.length} night${local.length > 1 ? 's' : ''} saved on this device into it</button>` : '';
+    return `<p class="plan-foot">Shared with the family through Notion${shared.status === 'loading' ? ' · checking for changes…' : ''}.${move}</p>`;
+  }
+
   const planStore = {
-    all() { return browserStore.get(PLAN_KEY, {}); },
+    all() { return shared.on ? shared.cache : browserStore.get(PLAN_KEY, {}); },
     get(date) { return this.all()[date] || null; },
-    set(date, entry) {
-      const p = this.all();
-      if (entry) p[date] = entry; else delete p[date];
-      browserStore.set(PLAN_KEY, p);
+    set(date, entry) { return this.setMany({ [date]: entry }); },
+    // changes: { date: entry | null }
+    setMany(changes) {
+      if (!shared.on) {
+        const p = browserStore.get(PLAN_KEY, {});
+        for (const [d, e] of Object.entries(changes)) { if (e) p[d] = e; else delete p[d]; }
+        browserStore.set(PLAN_KEY, p);
+        return Promise.resolve(true);
+      }
+      const before = {};
+      const nights = {};
+      for (const [d, e] of Object.entries(changes)) {
+        const out = toApi(e);
+        if (out === undefined) continue;          // sample recipe without a Notion page
+        before[d] = shared.cache[d] || null;
+        nights[d] = out;
+        if (e) shared.cache[d] = e; else delete shared.cache[d];
+      }
+      browserStore.set(CACHE_KEY, shared.cache);
+      const dates = Object.keys(nights);
+      if (!dates.length) return Promise.resolve(true);
+      shared.pending++;
+      const chunks = [];
+      for (let i = 0; i < dates.length; i += 20) chunks.push(Object.fromEntries(dates.slice(i, i + 20).map((d) => [d, nights[d]])));
+      return chunks.reduce((p, c) => p.then(() => api('PUT', '', { nights: c })), Promise.resolve())
+        .then(() => { shared.pending--; return true; })
+        .catch((err) => {
+          shared.pending--;
+          for (const [d, e] of Object.entries(before)) { if (e) shared.cache[d] = e; else delete shared.cache[d]; }
+          browserStore.set(CACHE_KEY, shared.cache);
+          rerenderPlan(true);
+          if (shared.status === 'code') askCode();
+          else toast('Couldn\'t save to the shared plan. Check your connection and try again.');
+          return false;
+        });
     },
   };
 
@@ -572,9 +690,11 @@
     const from = fresh.length ? fresh : pool;
     return from.length ? from[Math.floor(Math.random() * from.length)] : null;
   }
+  // In shared mode only recipes that have a Notion page can go on the plan.
+  const plannable = () => visible().filter((r) => !shared.on || /^[0-9a-f-]{32,36}$/i.test(r.id || ''));
   function dinnerPool() {
-    const d = visible().filter((r) => r.mealType === 'Dinner');
-    return d.length ? d : visible();
+    const d = plannable().filter((r) => r.mealType === 'Dinner');
+    return d.length ? d : plannable();
   }
   function shuffleSurprise() {
     const r = randomFrom(surprisePool(), sp.pick ? [sp.pick] : []);
@@ -586,16 +706,17 @@
     for (let k = -3; k <= 3; k++) { const e = plan[ymd(addDays(d, k))]; if (e && e.slug) out.push(e.slug); }
     return out;
   }
+  // Fill open nights; returns the changes so they can be undone.
   function fillDays(dates) {
-    const plan = planStore.all();
-    let n = 0;
+    const plan = { ...planStore.all() };
+    const changes = {};
     dates.forEach((date) => {
       if (plan[date]) return;
       const r = randomFrom(dinnerPool(), nearbySlugs(date, plan));
-      if (r) { plan[date] = { slug: r.slug }; n++; }
+      if (r) { plan[date] = { slug: r.slug }; changes[date] = { slug: r.slug }; }
     });
-    browserStore.set(PLAN_KEY, plan);
-    return n;
+    planStore.setMany(changes);
+    return changes;
   }
 
   // ---------- toast ----------
@@ -623,9 +744,11 @@
     toast(label || `Planned for ${esc(shortDate(d))}`, () => { planStore.set(date, before); rerenderPlan(); });
   }
 
-  function rerenderPlan() {
+  function rerenderPlan(fromSync) {
     const view = parseHash().parts[0];
     if (view !== 'plan' && view !== 'surprise') return;
+    // A background refresh waits while someone is choosing in a dialog.
+    if (fromSync && document.querySelector('dialog[open]')) return;
     const y = window.scrollY;
     const focusId = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.focus : null;
     route();
@@ -659,8 +782,9 @@
     const q = dlg.querySelector('#chooser-q');
     const draw = () => {
       const v = q.value.trim();
-      const rs = v ? search(v).results.map((x) => x.r)
-        : visible().slice().sort((a, b) => (b.mealType === 'Dinner') - (a.mealType === 'Dinner') || a.name.localeCompare(b.name));
+      const ok = new Set(plannable().map((r) => r.slug));
+      const rs = v ? search(v).results.map((x) => x.r).filter((r) => ok.has(r.slug))
+        : plannable().slice().sort((a, b) => (b.mealType === 'Dinner') - (a.mealType === 'Dinner') || a.name.localeCompare(b.name));
       list.innerHTML = rs.length
         ? rs.map((r) => `<li><button type="button" class="chooser-item" data-pick="${esc(r.slug)}">${thumb(r, 'chooser-thumb')}<span><b>${esc(r.name)}</b><small>${esc([r.mealType, timeLabel(r)].filter(Boolean).join(' · '))}</small></span></button></li>`).join('')
         : `<li class="chooser-none">No recipes match “${esc(v)}”.</li>`;
@@ -694,8 +818,9 @@
     dlg.id = 'nights';
     dlg.className = 'chooser';
     dlg.setAttribute('aria-labelledby', 'nights-title');
-    const plan = planStore.all();
     const start = todayD();
+    syncRange(ymd(addDays(start, -7)), ymd(addDays(start, 20)));
+    const plan = planStore.all();
     const days = Array.from({ length: 14 }, (_, k) => addDays(start, k));
     dlg.innerHTML = `
       <div class="chooser-head">
@@ -875,6 +1000,7 @@
     const start = mondayOf(parseYmd(params.get('w')) || todayD());
     const today = todayD();
     const dates = Array.from({ length: 7 }, (_, k) => addDays(start, k));
+    syncRange(ymd(addDays(start, -7)), ymd(addDays(start, 20)));
     const plan = planStore.all();
     const thisWeek = ymd(start) === ymd(mondayOf(today));
     const end = dates[6];
@@ -911,7 +1037,7 @@
           </div>
         </div>
         <div class="week-grid">${dates.map((d) => dayCard(d, plan[ymd(d)], ymd(d) === ymd(today))).join('')}</div>
-        ${browserStore.ok ? '<p class="plan-foot">Saved on this device. Other phones and computers have their own plan for now.</p>'
+        ${shared.on ? sharedNote() : browserStore.ok ? '<p class="plan-foot">Saved on this device. Other phones and computers have their own plan for now.</p>'
           : '<p class="plan-foot">This browser won\'t let the site save, so the plan disappears when you close the page. Private browsing often does this.</p>'}
       </section>
       ${groceryHtml(ymd(start), dates.map(ymd), plan)}`;
@@ -927,6 +1053,7 @@
     const gridEnd = addDays(mondayOf(last), 6);
     const cells = [];
     for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) cells.push(d);
+    syncRange(ymd(addDays(gridStart, -7)), ymd(addDays(gridEnd, 7)));
     const plan = planStore.all();
     const inMonth = (d) => d.getMonth() === first.getMonth();
     const monthDays = cells.filter(inMonth);
@@ -965,7 +1092,7 @@
             return `<div class="${cls} ${e ? 'is-set' : ''}">${wd}${inner}</div>`;
           }).join('')}</div>
         </div>
-        <p class="plan-foot">Saved on this device. Tap a dinner to open the recipe.</p>
+        ${shared.on ? sharedNote() : '<p class="plan-foot">Saved on this device. Tap a dinner to open the recipe.</p>'}
       </section>`;
   }
 
@@ -1005,7 +1132,6 @@
           return;
         }
         case 'fill-week': case 'fill-month': {
-          const before = planStore.all();
           let dates;
           if (b.dataset.act === 'fill-week') {
             const start = mondayOf(parseYmd(parseHash().params.get('w')) || todayD());
@@ -1016,10 +1142,23 @@
             dates = [];
             for (let d = new Date(y, mo - 1, 1); d.getMonth() === mo - 1; d = addDays(d, 1)) if (d >= today) dates.push(ymd(d));
           }
-          const n = fillDays(dates);
+          const changes = fillDays(dates);
+          const n = Object.keys(changes).length;
           rerenderPlan();
-          toast(n ? `Filled ${n} night${n > 1 ? 's' : ''}. Shuffle any you don't like.` : 'Add a few dinners to the book first.',
-            n ? () => { browserStore.set(PLAN_KEY, before); rerenderPlan(); } : null);
+          const undo = Object.fromEntries(Object.keys(changes).map((d) => [d, null]));
+          toast(n ? `Filled ${n} night${n > 1 ? 's' : ''}. Shuffle any you don't like.` : 'Every night is already planned.',
+            n ? () => { planStore.setMany(undo); rerenderPlan(); } : null);
+          return;
+        }
+        case 'code': askCode(); return;
+        case 'resync': shared.fetchedAt = 0; shared.status = 'idle'; rerenderPlan(); return;
+        case 'move-local': {
+          const local = browserStore.get(PLAN_KEY, {});
+          const today = ymd(todayD());
+          const changes = {};
+          for (const [d, e] of Object.entries(local)) if (d >= today && !shared.cache[d]) changes[d] = e;
+          const ok = await planStore.setMany(changes);
+          if (ok) { browserStore.set(PLAN_KEY, {}); rerenderPlan(); toast(`Copied ${Object.keys(changes).length} night${Object.keys(changes).length === 1 ? '' : 's'} into the shared plan.`); }
           return;
         }
         case 'to-groceries': { const g = document.getElementById('groceries'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
@@ -1059,6 +1198,11 @@
     });
     // Another tab changed the plan: show it.
     window.addEventListener('storage', (e) => { if (e.key === PLAN_KEY) rerenderPlan(); });
+    if (shared.on) {
+      const refresh = () => { if (document.visibilityState === 'visible' && parseHash().parts[0] === 'plan') { shared.fetchedAt = 0; rerenderPlan(true); } };
+      document.addEventListener('visibilitychange', refresh);
+      setInterval(refresh, 60000);
+    }
   }
 
   // ---------- boot ----------
@@ -1074,7 +1218,13 @@
     }
     wireSlashKey();
     wirePlanner();
-    window.addEventListener('hashchange', () => { document.title = 'Our Family Table'; route(); });
+    window.addEventListener('hashchange', () => {
+      document.title = 'Our Family Table';
+      document.querySelectorAll('dialog.chooser').forEach((d) => d.close());
+      const t = document.getElementById('toast');
+      if (t && parseHash().parts[0] !== 'plan') t.hidden = true;
+      route();
+    });
     route();
   }
   boot();

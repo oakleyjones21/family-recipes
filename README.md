@@ -39,6 +39,28 @@ To change this, add a repository **variable** named `SITE_STATUSES`, for example
 
 The sync reads each recipe page by its headings. A page needs an **Ingredients** heading followed by list items; an italic line or a line ending in `:` starts a group, such as *Sauce*. It also needs an **Instructions** heading followed by a numbered list. A gray callout titled **Notes & Variations** becomes the notes box. The first photo on the page, or its cover image, becomes the recipe photo. Anything inside the **Original** toggle stays private to Notion.
 
+## Meal plan
+
+The **Meal plan** and **Surprise me** pages work right away, but each phone or computer keeps its own plan in the browser. To share one plan with the family, it's saved in the **Meal Plan** database in Notion (inside Family Recipe Book). A small free Cloudflare Worker, `worker/meal-plan-worker.js`, sits between the site and Notion. It holds the Notion key, which can't go in this public repo, and checks a family passcode.
+
+### Turn on the shared plan (about 20 minutes, once)
+
+1. **Make a second Notion key that can write.** At <https://www.notion.so/profile/integrations> click **New integration**, name it *Meal Planner*, type **Internal**. Under **Capabilities** turn on **Read content**, **Update content** and **Insert content**. Save and copy the secret. In Notion, open **Family Recipe Book** and click **••• → Connections → Meal Planner**. It needs the whole page so it can link nights to recipes.
+2. **Create the Worker.** Sign up free at <https://dash.cloudflare.com>. Open **Workers & Pages → Create → Create Worker**, name it `meal-plan`, and click **Deploy**. Then click **Edit code**, delete what's there, paste all of `worker/meal-plan-worker.js`, and click **Deploy**.
+3. **Give the Worker its secrets.** In the Worker, open **Settings → Variables and Secrets → Add**:
+   - `NOTION_TOKEN`, type **Secret**: the Meal Planner secret from step 1.
+   - `FAMILY_CODE`, type **Secret**: a passcode the family will type once per device. Pick something not easy to guess.
+4. **Point the site at it.** Copy the Worker's address, which looks like `https://meal-plan.<you>.workers.dev`. Put it in `site/plan-config.js` as `window.OFT_PLAN_API = 'https://meal-plan.<you>.workers.dev';` and commit. The site redeploys in a minute or two.
+
+Each device asks for the passcode the first time someone opens **Meal plan**. A device that already has nights saved in its browser offers a button to copy them into the shared plan.
+
+### How it stays up to date
+
+- The plan is read from Notion when the page opens, when you come back to the tab, and every minute while it's open. Changes save to Notion right away.
+- You can also edit the **Meal Plan** database in Notion (the **Calendar** view is handy). Use the **Recipe** column for a recipe, or **Note** for Leftovers or Eating out. The site picks it up on its next check.
+- Grocery list check marks stay on each device.
+- Only recipes that are on the site (Status To Try, Tested or Family Favorite) can be picked from the site.
+
 ## Good to know
 
 - **It's public.** Anyone with the link can see a GitHub Pages site, so keep private notes out of recipe pages.
