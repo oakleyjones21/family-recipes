@@ -31,6 +31,8 @@ jobs:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATA_SOURCE_ID: ${{ vars.NOTION_DATA_SOURCE_ID }}
         run: node scripts/sync-notion.mjs
+      - name: Stamp files so browsers load the newest version
+        run: sed -i "s/__BUILD__/${GITHUB_SHA::7}-${GITHUB_RUN_NUMBER}/g" site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
