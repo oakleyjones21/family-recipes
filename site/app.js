@@ -84,10 +84,11 @@
     return byMeal[meal] || byCuisine[cuisine] || 'dinner';
   }
 
-  function thumb(r, cls) {
+  function thumb(r, cls, credit) {
+    const tag = credit && r.source ? `<span class="photo-credit">${r.sourceLink ? `<a href="${esc(r.sourceLink)}" rel="noopener">${esc(r.source)}</a>` : esc(r.source)}</span>` : '';
     return r.photo
-      ? `<div class="${cls}"><img src="${esc(r.photo)}" alt="${esc(r.name)}" loading="lazy"></div>`
-      : `<div class="${cls}">${icon(categoryIcon(r), 'ico-lg')}</div>`;
+      ? `<div class="${cls}"><img src="${esc(r.photo)}" alt="${esc(r.name)}" loading="lazy">${tag}</div>`
+      : `<div class="${cls}">${icon(categoryIcon(r), 'ico-lg')}${tag}</div>`;
   }
 
   // Does recipe r use ingredient term t? Checks tags first, then every ingredient line.
@@ -386,7 +387,7 @@
               <p class="print-hint" id="print-hint" hidden>No print menu? Tap your browser's <b>Share</b> button, then <b>Print</b>.</p>
             </div>
             ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
-            ${r.photo ? thumb(r, 'hero-photo photo-top') : ''}
+            ${r.photo ? thumb(r, 'hero-photo photo-top', true) : ''}
             <h2>Ingredients</h2>
             <div class="ing-groups">${(r.ingredientGroups || []).map((g) => `
               <div class="ing-group">
@@ -394,10 +395,9 @@
               <div class="checklist">${g.items.map((it) => `<label><input type="checkbox" id="i${n++}"><span>${rich(it)}</span></label>`).join('')}</div>
               </div>`).join('')}</div>
             ${(r.related || []).length ? `<div class="related"><p class="group-label">Goes with</p><ul>${r.related.map((x) => `<li><a class="inline-link" href="#/recipe/${esc(x.slug)}">${esc(x.name)}</a></li>`).join('')}</ul></div>` : ''}
-            ${r.source ? `<p class="source">From ${r.sourceLink ? `<a href="${esc(r.sourceLink)}" rel="noopener">${esc(r.source)}</a>` : esc(r.source)}</p>` : ''}
           </div>
           <div class="recipe-main">
-            ${thumb(r, 'hero-photo')}
+            ${thumb(r, 'hero-photo', true)}
             <h2>Instructions</h2>
             ${(r.steps || []).map((s, i) => `<div class="step"><span class="step-num">${i + 1}</span><p>${rich(s)}</p></div>`).join('')}
           </div>
