@@ -399,7 +399,7 @@
   const CONTAINERS = new Set(['clove', 'head', 'stalk', 'ear', 'leaf', 'leave', 'fillet', 'filet']);
   const SYNONYMS = { spaghetti: 'pasta', penne: 'pasta', linguine: 'pasta', fettuccine: 'pasta', macaroni: 'pasta', rigatoni: 'pasta', orzo: 'pasta', noodle: 'pasta', hair: 'pasta', scallion: 'onion', shallot: 'onion' };
 
-  const GENERIC_HEADS = new Set(['sauce', 'juice', 'zest', 'oil', 'powder', 'paste', 'extract', 'seed', 'flake', 'chip', 'mix', 'seasoning']);
+  const GENERIC_HEADS = new Set(['sauce', 'juice', 'zest', 'oil', 'powder', 'paste', 'extract', 'seed', 'flake', 'chip', 'mix', 'seasoning', 'dressing', 'vinegar', 'breast', 'thigh', 'wing', 'leg', 'drumstick', 'tenderloin', 'cutlet', 'fillet', 'chop', 'loin', 'steak']);
   const skipWord = (w) => w.length < 3 || UNITS.has(w) || DESCRIPTORS.has(w) || CONTAINERS.has(w)
     || UNITS.has(singular(w)) || DESCRIPTORS.has(singular(w)) || CONTAINERS.has(singular(w)) || CONTAINERS.has(w.replace(/s$/, ''));
 
@@ -408,7 +408,7 @@
     if (!words.length) return [];
     const head = singular(words[words.length - 1]);
     const keys = [head];
-    if (GENERIC_HEADS.has(head) && words.length > 1) keys.push(singular(words[0]));
+    if (GENERIC_HEADS.has(head) && words.length > 1) keys.push(singular(words[words.length - 2]));
     return keys;
   }
 
