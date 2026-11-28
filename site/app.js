@@ -897,6 +897,7 @@
             ${viewToggle('week', start, ymd(start).slice(0, 7))}
             ${open ? `<button type="button" class="btn btn-light" data-act="fill-week" data-focus="fill-week">${icon('dice')}Fill ${open === 7 ? 'the week' : open === 1 ? 'the open night' : `${open} open nights`} for me</button>` : ''}
             <button type="button" class="btn btn-outline-light" data-act="to-groceries">${icon('shopping-list')}Grocery list</button>
+            ${planned ? `<button type="button" class="btn btn-outline-light" data-act="reset-week" data-w="${ymd(start)}" data-focus="reset-week">${icon('close')}Clear week</button>` : ''}
           </div>
         </div>
         ${surprisePanel(false)}
@@ -948,6 +949,7 @@
           <a class="icon-btn" href="#/plan/month?m=${mk(prev)}" aria-label="Previous month">${icon('chev-l')}</a>
           <a class="icon-btn" href="#/plan/month?m=${mk(next)}" aria-label="Next month">${icon('chev-r')}</a>
           ${fillable ? `<button type="button" class="btn btn-olive" data-act="fill-month" data-m="${mk(first)}" data-focus="fill-month">${icon('dice')}Fill ${fillable} open night${fillable > 1 ? 's' : ''}</button>` : ''}
+          ${planned ? `<button type="button" class="btn btn-ghost" data-act="reset-month" data-m="${mk(first)}" data-focus="reset-month">${icon('close')}Clear month</button>` : ''}
         </div>
       </section>
       <section class="wrap">
@@ -1020,6 +1022,36 @@
           rerenderPlan();
           toast(n ? `Filled ${n} night${n > 1 ? 's' : ''}. Shuffle any you don't like.` : 'Add a few dinners to the book first.',
             n ? () => { browserStore.set(PLAN_KEY, before); rerenderPlan(); } : null);
+          return;
+        }
+        case 'reset-week': case 'reset-month': {
+          // Wipe the plan and the grocery checkmarks for this week or month, saved memory included.
+          const isWeek = b.dataset.act === 'reset-week';
+          let dates, label;
+          if (isWeek) {
+            const start = parseYmd(b.dataset.w);
+            dates = Array.from({ length: 7 }, (_, k) => ymd(addDays(start, k)));
+            label = 'this week';
+          } else {
+            const [y, mo] = b.dataset.m.split('-').map(Number);
+            dates = [];
+            for (let d = new Date(y, mo - 1, 1); d.getMonth() === mo - 1; d = addDays(d, 1)) dates.push(ymd(d));
+            label = fmt(new Date(y, mo - 1, 1), { month: 'long' });
+          }
+          const planBefore = planStore.all();
+          const groceryBefore = browserStore.get(GROCERY_KEY, {});
+          const plan = JSON.parse(JSON.stringify(planBefore));
+          const grocery = JSON.parse(JSON.stringify(groceryBefore));
+          let n = 0;
+          dates.forEach((d) => { if (plan[d]) { delete plan[d]; n++; } });
+          // Grocery checks are saved per week (keyed by that week's Monday), so clear every week that touches these dates.
+          const weeks = new Set(dates.map((d) => ymd(mondayOf(parseYmd(d)))));
+          weeks.forEach((w) => { delete grocery[w]; });
+          browserStore.set(PLAN_KEY, plan);
+          browserStore.set(GROCERY_KEY, grocery);
+          rerenderPlan();
+          toast(`Cleared ${label}${n ? ` (${n} night${n > 1 ? 's' : ''})` : ''}.`,
+            () => { browserStore.set(PLAN_KEY, planBefore); browserStore.set(GROCERY_KEY, groceryBefore); rerenderPlan(); });
           return;
         }
         case 'to-groceries': { const g = document.getElementById('groceries'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
