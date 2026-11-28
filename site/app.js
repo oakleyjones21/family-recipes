@@ -361,8 +361,9 @@
           <div class="recipe-side">
             <span class="eyebrow">${esc([r.cuisine, r.mealType].filter(Boolean).join(' · ') || 'Recipe')}</span>
             <h1>${esc(r.name)}</h1>
-            <div class="stats">${stat('SERVES', r.servings, 'servings')}${stat('PREP', r.prep ? r.prep + ' min' : '', 'prep-time')}${stat('COOK', r.cook ? r.cook + ' min' : '', 'cook-time')}</div>
+            <div class="stats">${stat('SERVES', r.servings, 'servings')}${stat('PREP', mins(r.prep), 'prep-time')}${stat('COOK', mins(r.cook), 'cook-time')}</div>
             ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+            ${r.photo ? thumb(r, 'hero-photo photo-top') : ''}
             <h2>Ingredients</h2>
             ${(r.ingredientGroups || []).map((g) => `
               ${g.label ? `<p class="group-label">${esc(g.label)}</p>` : ''}
@@ -391,6 +392,8 @@
     document.getElementById('print-btn').addEventListener('click', () => printCard(r));
     window.scrollTo(0, 0);
   }
+
+  const mins = (m) => { if (!m) return ''; if (m < 60) return m + ' min'; const h = Math.floor(m / 60), r = m % 60; return h + ' hr' + (r ? ' ' + r + ' min' : ''); };
 
   // ---------- printing ----------
   // Saved-to-home-screen apps on iPhone can't open the print menu, so hand the page to the browser instead.
