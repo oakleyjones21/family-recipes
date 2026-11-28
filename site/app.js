@@ -365,9 +365,11 @@
             ${tags.length ? `<div class="tags">${tags.map((t) => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
             ${r.photo ? thumb(r, 'hero-photo photo-top') : ''}
             <h2>Ingredients</h2>
-            ${(r.ingredientGroups || []).map((g) => `
+            <div class="ing-groups">${(r.ingredientGroups || []).map((g) => `
+              <div class="ing-group">
               ${g.label ? `<p class="group-label">${esc(g.label)}</p>` : ''}
-              <div class="checklist">${g.items.map((it) => `<label><input type="checkbox" id="i${n++}"><span>${rich(it)}</span></label>`).join('')}</div>`).join('')}
+              <div class="checklist">${g.items.map((it) => `<label><input type="checkbox" id="i${n++}"><span>${rich(it)}</span></label>`).join('')}</div>
+              </div>`).join('')}</div>
             ${r.source ? `<p class="source">From ${r.sourceLink ? `<a href="${esc(r.sourceLink)}" rel="noopener">${esc(r.source)}</a>` : esc(r.source)}</p>` : ''}
           </div>
           <div class="recipe-main">
